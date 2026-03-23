@@ -1,0 +1,39 @@
+/* Tailwind CSS v4 - Import theme and utilities, skip base/preflight to preserve Bootstrap */
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
+
+/* PHP Coin brand (optional overrides; theme primary may differ) */
+:root {
+  --phpcoin-primary: #5156be;
+  --phpcoin-primary-dark: #4549a8;
+  --phpcoin-tagline: "Your keys, your coins";
+}
+
+/* Theme-aware backgrounds (fallback if Bootstrap utilities missing) */
+.bg-body {
+  background-color: var(--bs-body-bg);
+}
+.bg-body-tertiary {
+  background-color: var(--bs-tertiary-bg, var(--bs-gray-100));
+}
+
+/* Custom PHP Coin styles */
+.phpcoin-card {
+  background-color: var(--bs-body-bg);
+  border-radius: 0.25rem;
+  border: 1px solid var(--bs-border-color);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.phpcoin-btn-primary {
+  background-color: var(--phpcoin-primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+}
+
+.phpcoin-btn-primary:hover {
+  background-color: var(--phpcoin-primary-dark);
+  color: white;
+}
+
