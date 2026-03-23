@@ -15,6 +15,8 @@ A Vue 3 SPA web wallet for managing PHP Coin accounts.
 
 ## Setup
 
+**`.env.development`** and **`.env.production`** are included in the repo with sensible defaults so you can run the app locally right after clone (`npm install` → `npm run dev` or `npm run build`). They are not secret (public API URLs). Change them if you point at your own node, explorer, or `wallet_api.php`.
+
 1. Install dependencies:
 ```bash
 npm install
