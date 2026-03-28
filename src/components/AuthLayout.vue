@@ -155,7 +155,7 @@ import ChangelogModal from './ChangelogModal.vue'
 
 /** Classic PHP multi-wallet entry (relative to site origin). */
 const LEGACY_WEB_WALLET_URL =
-  '/dapps.php?url=PeC85pqFgRxmevonG6diUwT4AfF7YUPSm3/wallet'
+  'https://main1.phpcoin.net/dapps.php?url=PeC85pqFgRxmevonG6diUwT4AfF7YUPSm3/wallet'
 
 export default {
   name: 'AuthLayout',

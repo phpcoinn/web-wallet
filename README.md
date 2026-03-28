@@ -12,6 +12,19 @@ A Vue 3 SPA web wallet for managing PHP Coin accounts.
 - Transaction history
 - Wallet import/export
 - Dark theme with PHP Coin branding
+- **Telegram bot autologin** — signed `/autologin?request=…` links (see below)
+
+## Telegram bot autologin
+
+Remote sign-in uses a **signed** URL. The `request` query is `encodeURIComponent(Base64(JSON))` where JSON contains `payload` (`nonce`, `time`), `public_key`, and `signature`. The signed message is **`JSON.stringify(payload)`** exactly (PHP Coin ECDSA; **no** `CHAIN_ID` prefix, unlike on-chain signing).
+
+With **hash routing**, open:
+
+`{wallet-origin}{base}#/autologin?request={ENCODED}`
+
+Example: `https://wallet.phpcoin.net/#/autologin?request=…`
+
+The wallet checks signature, time window (±5 minutes), and **replay** (nonce + public key stored in `localStorage`). The resulting session is **verified identity only** — no private key. Users can view balance, receive, and browse history; **Send**, **Swap**, **Masternodes**, and **Accounts** require **Quick login** or password login.
 
 ## Setup
 

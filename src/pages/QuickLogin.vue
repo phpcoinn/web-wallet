@@ -122,8 +122,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Zap, Key, LogIn, Lock, Shield } from 'lucide-vue-next'
-import { useAuthStore } from '../stores/auth'
-import { useAccountsStore } from '../stores/accounts'
+import { useAuthStore, buildQuickLoginAccount } from '../stores/auth'
 import { getPublicKey, signMessage } from '../utils/wallet'
 import { api } from '../utils/api'
 import { toast } from '../utils/toast'
@@ -137,7 +136,6 @@ export default {
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
-    const accountsStore = useAccountsStore()
     
     const loading = ref(false)
     const errors = reactive({})
@@ -213,30 +211,20 @@ export default {
         // Step 4: Call authenticate API
         const authResponse = await api.authenticate(publicKey, signature, nonce)
         
-        // Step 5: If successful, get address from API response
-        // API returns address directly or in address field
+        // Step 5: Same account shape as autologin / any quick session (address from API when provided)
         const address = authResponse.address || authResponse
-        
         if (!address) {
           throw new Error('Authentication failed: No address returned from API')
         }
-        
-        // Create account object with validated address
-        const account = {
-          id: `quick-${Date.now()}`,
-          name: 'Quick Login Account',
-          address: address,
-          privateKey: privateKey,
-          isQuickLogin: true
+        const account = buildQuickLoginAccount(privateKey, { address })
+        if (!account) {
+          throw new Error('Invalid private key')
         }
-        
-        // Save as permanent account if requested
+
         if (form.saveAccount) {
           // TODO: Encrypt and save to IndexedDB
-          // For now, just store in memory
         }
-        
-        // Login with private key (stored in memory)
+
         authStore.login(privateKey, true)
         authStore.setActiveAccount(account)
 

@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import changelogRaw from '../../CHANGELOG.md?raw'
-import { getLastLoginAt } from './lastLogin'
+import { getLoginAtBeforeThisSession } from './lastLogin'
 
 marked.setOptions({ gfm: true, breaks: true })
 
@@ -72,7 +72,7 @@ export const WHATS_NEW_SEEN_KEY = 'phpcoin_whats_new_seen_fp'
  * When [Unreleased] has no date in the title, only logins after this instant qualify.
  * Bump when you add meaningful unreleased notes (or rely on a dated version section).
  */
-export const WHATS_NEW_UNRELEASED_EFFECTIVE_AT = Date.parse('2026-03-22T00:00:00Z')
+export const WHATS_NEW_UNRELEASED_EFFECTIVE_AT = Date.parse('2026-03-28T00:00:00Z')
 
 function simpleHash(str) {
   let h = 5381
@@ -83,10 +83,9 @@ function simpleHash(str) {
 }
 
 function parsePublishedAtMs(title) {
-  const m = title.match(/—\s*(\d{4}-\d{2}-\d{2})/)
+  const m = title.match(/(\d{4}-\d{2}-\d{2})/)
   if (m) return Date.parse(`${m[1]}T00:00:00Z`)
-  if (/^\[Unreleased\]/i.test(title)) return WHATS_NEW_UNRELEASED_EFFECTIVE_AT
-  if (/^\[\d+\.\d+\.\d+\]/.test(title)) return 0
+  if (/Unreleased/i.test(title)) return WHATS_NEW_UNRELEASED_EFFECTIVE_AT
   return 0
 }
 
@@ -105,14 +104,15 @@ export function getWhatsNewDisplayPayload() {
 }
 
 /**
- * Show only after a successful login recorded in localStorage at/after the changelog
- * effective date, and only until the user dismisses this fingerprint once.
+ * Show only if the login **before this session** was before the release date (first time
+ * back after a dated release), and until the user dismisses this fingerprint once.
  */
 export function shouldShowWhatsNewAlert(payload) {
-  if (!payload) return false
-  const lastLogin = getLastLoginAt()
-  if (!lastLogin) return false
-  if (lastLogin < payload.publishedAtMs) return false
+  if (!payload || !payload.publishedAtMs) return false
+  const loginBeforeThis = getLoginAtBeforeThisSession()
+  if (loginBeforeThis > 0 && loginBeforeThis >= payload.publishedAtMs) {
+    return false
+  }
   try {
     return localStorage.getItem(WHATS_NEW_SEEN_KEY) !== payload.fingerprint
   } catch {

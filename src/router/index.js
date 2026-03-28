@@ -23,6 +23,12 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/autologin',
+    name: 'Autologin',
+    component: () => import('../pages/Autologin.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../pages/Dashboard.vue'),

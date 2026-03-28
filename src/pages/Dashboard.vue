@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <!-- What's new (changelog; once per user per release, after login past effective date) -->
+    <!-- What's new: first login after a dated release if prior login was before that date; until dismissed -->
     <div v-if="showWhatsNew && whatsNewPayload" class="row mb-3">
       <div class="col-12">
         <div class="alert alert-info mb-0 d-flex align-items-start" role="status">
@@ -405,8 +405,11 @@ export default {
     }
 
     const displayPublicKey = computed(() => {
-      if (!activeAccount.value || !authStore.masterKey) return ''
-      if (authStore.isQuickLogin) return getPublicKey(authStore.masterKey) || ''
+      if (!authStore.masterKey) return ''
+      if (authStore.isQuickLogin) {
+        return activeAccount.value?.publicKey || getPublicKey(authStore.masterKey) || ''
+      }
+      if (!activeAccount.value) return ''
       try {
         const pk = accountsStore.getDecryptedPrivateKey(activeAccount.value, authStore.masterKey)
         return getPublicKey(pk) || ''
@@ -537,9 +540,10 @@ export default {
     async function generateQRCode() {
       await nextTick()
       const canvas = qrcodeCanvas.value
-      if (!canvas || !activeAccount.value?.address) return
+      const addr = activeAccount.value?.address
+      if (!canvas || !addr) return
       try {
-        await QRCode.toCanvas(canvas, activeAccount.value.address, {
+        await QRCode.toCanvas(canvas, addr, {
           width: 200,
           margin: 2,
           color: { dark: '#1F2937', light: '#F9FAFB' }
@@ -550,10 +554,11 @@ export default {
     }
 
     const loadBalance = async () => {
-      if (!activeAccount.value?.address) return
+      const addr = activeAccount.value?.address
+      if (!addr) return
       try {
         loading.value = true
-        const data = await api.getBalance(activeAccount.value.address)
+        const data = await api.getBalance(addr)
         const raw = typeof data === 'object' && data !== null && 'balance' in data ? data.balance : data
         balance.value = raw != null && raw !== '' ? String(raw) : '0.00'
       } catch (error) {
@@ -606,10 +611,11 @@ export default {
     }
 
     const loadTransactions = async () => {
-      if (!activeAccount.value?.address) return
+      const addr = activeAccount.value?.address
+      if (!addr) return
       try {
         loadingTx.value = true
-        const data = await api.getTransactions(activeAccount.value.address, 1, 50)
+        const data = await api.getTransactions(addr, 1, 50)
         transactions.value = Array.isArray(data) ? data : []
         transactionCount.value = transactions.value.length
       } catch (error) {
@@ -783,10 +789,6 @@ export default {
     }
 
     function openVerifierLogin() {
-      if (!activeAccount.value) {
-        toast.error('No active account')
-        return
-      }
       if (authStore.isQuickLogin) {
         const pk = authStore.masterKey
         if (!pk) {
@@ -794,6 +796,10 @@ export default {
           return
         }
         openVerifierInNewTab(pk)
+        return
+      }
+      if (!activeAccount.value) {
+        toast.error('No active account')
         return
       }
       showVerifierPasswordModal.value = true
@@ -923,12 +929,13 @@ export default {
     }
 
     const checkAddressVerification = async () => {
-      if (!activeAccount.value?.address) {
+      const addr = activeAccount.value?.address
+      if (!addr) {
         addressVerified.value = null
         return
       }
       try {
-        const pk = await api.getPublicKey(activeAccount.value.address)
+        const pk = await api.getPublicKey(addr)
         addressVerified.value = !!(pk && String(pk).trim())
       } catch {
         addressVerified.value = false
@@ -959,7 +966,7 @@ export default {
       await loadBalanceHistoryAndChart()
     })
 
-    watch(activeAccount, async () => {
+    watch([activeAccount, () => authStore.masterKey], async () => {
       revealedPrivateKey.value = ''
       privateKeyRevealed.value = false
       addressVerified.value = null
