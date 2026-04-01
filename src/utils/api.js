@@ -3,17 +3,18 @@
 
 import { MAIN_API_URL, MAIN_URL } from './mainUrl.js'
 
-function requireHttpUrl(envName, v) {
+/** Full URL or root-relative path (e.g. `/dapps.php?url=…/wallet_api.php` for dapps builds). */
+function requireWalletApiUrl(envName, v) {
   if (v == null || v === '') {
     throw new Error(`${envName} must be set. Check .env.development / .env.production.`)
   }
-  if (!/^https?:\/\//i.test(String(v))) {
-    throw new Error(`${envName} must start with http:// or https://`)
-  }
-  return v
+  const s = String(v)
+  if (/^https?:\/\//i.test(s)) return s
+  if (s.startsWith('/')) return s
+  throw new Error(`${envName} must be http(s)://… or a path starting with / (same-origin)`)
 }
 
-const WALLET_API_URL = requireHttpUrl('VITE_WALLET_API_URL', import.meta.env.VITE_WALLET_API_URL)
+const WALLET_API_URL = requireWalletApiUrl('VITE_WALLET_API_URL', import.meta.env.VITE_WALLET_API_URL)
 
 /** Use `&` when base URL already has a query string (e.g. dapps.php?url=…). */
 function querySep(baseUrl) {

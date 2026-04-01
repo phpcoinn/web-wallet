@@ -13,15 +13,20 @@ if (import.meta.env.DEV) {
 
 const commonBase = (import.meta.env.VITE_COMMON_ASSETS || '').trim()
 
-if (commonBase && !/^https?:\/\//i.test(commonBase)) {
+/** Full `https://…` URL or root-relative path `/…` (same origin). */
+function isValidCommonAssetsBase(v) {
+  return v && (/^https?:\/\//i.test(v) || v.startsWith('/'))
+}
+
+if (commonBase && !isValidCommonAssetsBase(commonBase)) {
   console.error(
-    '[wallet] VITE_COMMON_ASSETS must be a full URL (e.g. https://main1.phpcoin.net/apps/common). Got:',
+    '[wallet] VITE_COMMON_ASSETS must be https://… or a path starting with / (e.g. https://main1.phpcoin.net/apps/common or /apps/common). Got:',
     commonBase
   )
 }
 
-if (commonBase && /^https?:\/\//i.test(commonBase)) {
-  // Load theme CSS from shared host (absolute URL; not proxied by Vite)
+if (commonBase && isValidCommonAssetsBase(commonBase)) {
+  // Load theme CSS from shared host (absolute URL or same-origin path; not proxied by Vite)
   const cssFiles = [
     'preloader.min.css',
     'bootstrap.min.css',
@@ -37,7 +42,7 @@ if (commonBase && /^https?:\/\//i.test(commonBase)) {
   })
 } else {
   console.error(
-    '[wallet] Set VITE_COMMON_ASSETS to a full https URL (e.g. https://main1.phpcoin.net/apps/common). Theme CSS will not load without it.'
+    '[wallet] Set VITE_COMMON_ASSETS (e.g. https://main1.phpcoin.net/apps/common or /apps/common). Theme CSS will not load without it.'
   )
 }
 

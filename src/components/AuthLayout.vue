@@ -188,5 +188,10 @@ export default {
 .auth-legacy-wallet-link:hover {
   color: #3d4299;
 }
+
+/* Minia theme references ../images/auth-bg.jpg — not available on all hosts; avoid 404 */
+.auth-bg {
+  background-image: none !important;
+}
 </style>
 

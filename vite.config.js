@@ -4,11 +4,65 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 import fs from 'fs'
 
+/** What Vite uses internally for `base` when the env value has a ?query (pathname only + trailing slash). */
+function viteStrippedBase(userBase) {
+  const raw = userBase.startsWith('/') ? userBase : `/${userBase}`
+  const pathname = new URL(raw, 'http://vite.dev').pathname
+  return pathname.endsWith('/') ? pathname : `${pathname}/`
+}
+
+/** After build, Vite leaves asset URLs under stripped base; rewrite to full base (query + path). */
+function rewriteDistBaseAfterBuild(fullBase, strippedBase) {
+  return {
+    name: 'rewrite-dist-base-query',
+    closeBundle() {
+      if (fullBase === strippedBase) return
+      const outDir = path.resolve(process.cwd(), 'dist')
+      if (!fs.existsSync(outDir)) return
+      const walk = (dir) => {
+        const names = fs.readdirSync(dir, { withFileTypes: true })
+        const files = []
+        for (const n of names) {
+          const p = path.join(dir, n.name)
+          if (n.isDirectory()) files.push(...walk(p))
+          else files.push(p)
+        }
+        return files
+      }
+      const exts = /\.(html|js|mjs|css|json|webmanifest|map)$/i
+      for (const file of walk(outDir)) {
+        if (!exts.test(file)) continue
+        let s = fs.readFileSync(file, 'utf8')
+        if (!s.includes(strippedBase)) continue
+        fs.writeFileSync(file, s.split(strippedBase).join(fullBase), 'utf8')
+      }
+      // index.html: root-relative public assets (href="pwa-….png") resolve to http://host/… when the
+      // document is dapps.php?url=… — prefix with full app base so icons match the app URL.
+      const indexPath = path.join(outDir, 'index.html')
+      if (fs.existsSync(indexPath)) {
+        let html = fs.readFileSync(indexPath, 'utf8')
+        const relPatches = [
+          ['href="manifest.webmanifest"', `href="${fullBase}manifest.webmanifest"`],
+          ['href="pwa-192x192.png"', `href="${fullBase}pwa-192x192.png"`],
+          ['href="pwa-512x512.png"', `href="${fullBase}pwa-512x512.png"`],
+          ['href="pwa-maskable-512x512.png"', `href="${fullBase}pwa-maskable-512x512.png"`]
+        ]
+        for (const [from, to] of relPatches) {
+          if (html.includes(from)) html = html.split(from).join(to)
+        }
+        fs.writeFileSync(indexPath, html)
+      }
+    }
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   // Base URL for app and assets (same place). Bundled script/link tags use this.
-  const base = env.VITE_APP_BASE ?? '/apps/wallet3/'
-  const baseNorm = base.endsWith('/') ? base : base + '/'
+  const rawBase = env.VITE_APP_BASE ?? '/apps/wallet3/'
+  const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`
+  const strippedBase = viteStrippedBase(base)
+  const baseNorm = base
 
   // In dev, serve public/assets under base path (e.g. /apps/wallet3/assets/ → public/assets/)
   const servePublicUnderBase = () => ({
@@ -36,13 +90,15 @@ export default defineConfig(({ mode }) => {
     }
   })
 
-  const baseForScope = base.endsWith('/') ? base : `${base}/`
+  const baseForScope = base
 
   return {
-    base,
+    // Vite strips ?query from base internally; rewriteDistBaseAfterBuild fixes dist/*.html, *.js, etc.
+    base: strippedBase,
     plugins: [
       vue(),
       servePublicUnderBase(),
+      ...(base !== strippedBase ? [rewriteDistBaseAfterBuild(base, strippedBase)] : []),
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: false,

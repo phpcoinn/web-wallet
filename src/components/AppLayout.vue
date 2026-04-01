@@ -478,14 +478,15 @@ export default {
     }
 
     const commonBaseRaw = (import.meta.env.VITE_COMMON_ASSETS || '').trim()
-    const commonBase = /^https?:\/\//i.test(commonBaseRaw) ? commonBaseRaw : ''
+    const commonBase =
+      /^https?:\/\//i.test(commonBaseRaw) || commonBaseRaw.startsWith('/') ? commonBaseRaw : ''
 
     onMounted(() => {
       // Close sidebar on navigation (e.g. when user clicks a sidebar link on mobile)
       router.afterEach(() => {
         document.body.classList.remove('sidebar-enable')
       })
-      // Load required JS from VITE_COMMON_ASSETS (full https URL) or local public/assets
+      // Load required JS from VITE_COMMON_ASSETS (https URL or root-relative /…) or local public/assets
       // Chart logic inlined in Dashboard.vue; vectormap removed (unused)
       const scriptPaths = commonBase
         ? [
