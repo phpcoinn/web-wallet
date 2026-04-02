@@ -441,11 +441,12 @@
                 <label class="form-label">Private Key</label>
                 <div class="input-group">
                   <input
-                    :type="viewPrivateKeyRevealed ? 'text' : 'password'"
+                    type="text"
                     class="form-control font-monospace"
                     :value="viewPrivateKeyRevealed ? viewPrivateKey : ''"
                     :placeholder="viewPrivateKeyRevealed ? '' : '••••••••••••••••'"
                     readonly
+                    autocomplete="off"
                     style="word-break: break-all; font-size: 0.875rem;"
                   />
                   <template v-if="viewPrivateKeyRevealed">

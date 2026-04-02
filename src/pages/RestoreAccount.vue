@@ -5,6 +5,14 @@
       <p class="text-muted">Restore your wallet from a backup file.</p>
     </div>
     <form @submit.prevent="handleRestore">
+      <input
+        type="text"
+        autocomplete="username"
+        name="username"
+        class="visually-hidden"
+        tabindex="-1"
+        aria-label="Account identifier"
+      />
       <div class="mb-4">
         <label class="form-label">Backup file</label>
         <input
@@ -28,6 +36,7 @@
             :class="{ 'is-invalid': passwordError }"
             v-model="password"
             placeholder="Enter your wallet password"
+            autocomplete="current-password"
             @keyup.enter="handleRestore"
           />
           <button

@@ -36,6 +36,15 @@ function rewriteDistBaseAfterBuild(fullBase, strippedBase) {
         if (!s.includes(strippedBase)) continue
         fs.writeFileSync(file, s.split(strippedBase).join(fullBase), 'utf8')
       }
+      // manifest.webmanifest: icon src stays relative (no strippedBase in string); prefix with full base
+      const manifestPath = path.join(outDir, 'manifest.webmanifest')
+      if (fs.existsSync(manifestPath)) {
+        let m = fs.readFileSync(manifestPath, 'utf8')
+        for (const name of ['pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png']) {
+          m = m.split(`"src":"${name}"`).join(`"src":"${fullBase}${name}"`)
+        }
+        fs.writeFileSync(manifestPath, m)
+      }
       // index.html: root-relative public assets (href="pwa-….png") resolve to http://host/… when the
       // document is dapps.php?url=… — prefix with full app base so icons match the app URL.
       const indexPath = path.join(outDir, 'index.html')

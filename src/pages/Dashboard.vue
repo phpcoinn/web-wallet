@@ -187,11 +187,12 @@
                     <p class="mb-1 text-muted font-size-13">Private key</p>
                     <div class="input-group input-group-sm">
                       <input
-                        :type="privateKeyRevealed ? 'text' : 'password'"
+                        type="text"
                         class="form-control font-monospace font-size-13"
                         :value="privateKeyRevealed ? revealedPrivateKey : ''"
                         :placeholder="privateKeyRevealed ? '' : '••••••••••••••••'"
                         readonly
+                        autocomplete="off"
                         style="word-break: break-all;"
                       />
                       <template v-if="privateKeyRevealed">
@@ -315,8 +316,18 @@ import {
   markWhatsNewSeen
 } from '../utils/changelog'
 
-function initSparklineChart(el, seriesData, options = {}) {
+function initSparklineChart(el, seriesData, options = {}, layoutAttempt = 0) {
   if (!el) return
+  // ApexCharts uses SVG <foreignObject> for tooltips; width/height NaN happens if the container
+  // has not been laid out yet (0×0), producing "Expected length, NaN" in the console.
+  const rect = el.getBoundingClientRect()
+  const w = rect.width || el.clientWidth
+  if (!Number.isFinite(w) || w < 1) {
+    if (layoutAttempt < 12) {
+      requestAnimationFrame(() => initSparklineChart(el, seriesData, options, layoutAttempt + 1))
+    }
+    return
+  }
   if (el.__apexChart) {
     el.__apexChart.destroy()
     el.__apexChart = null
@@ -350,7 +361,12 @@ function initSparklineChart(el, seriesData, options = {}) {
   }
   const opts = {
     series: [{ data: safeData }],
-    chart: { type: 'line', height: 50, sparkline: { enabled: true } },
+    chart: {
+      type: 'line',
+      height: 50,
+      width: Math.max(1, Math.floor(w)),
+      sparkline: { enabled: true }
+    },
     colors,
     stroke: { curve: 'smooth', width: 2 },
     yaxis: yaxisOpt,

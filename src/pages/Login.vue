@@ -77,6 +77,14 @@
             <div class="">
               <div class="">
                 <form @submit.prevent="handleAdd">
+                  <input
+                    type="text"
+                    autocomplete="username"
+                    name="username"
+                    class="visually-hidden"
+                    tabindex="-1"
+                    aria-label="Account identifier"
+                  />
                   <template v-if="isSetup">
                     <div class="mb-3">
                       <label class="form-label">Password:</label>
@@ -87,6 +95,7 @@
                           :class="{ 'is-invalid': addErrors.password }"
                           v-model="addForm.password"
                           placeholder="Enter password"
+                          autocomplete="new-password"
                         />
                         <button type="button" class="btn btn-light shadow-none" @click="showCreatePassword = !showCreatePassword">
                           <i :class="showCreatePassword ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'"></i>
@@ -103,6 +112,7 @@
                           :class="{ 'is-invalid': addErrors.confirmPassword }"
                           v-model="addForm.confirmPassword"
                           placeholder="Confirm password"
+                          autocomplete="new-password"
                         />
                         <button type="button" class="btn btn-light shadow-none" @click="showConfirmPassword = !showConfirmPassword">
                           <i :class="showConfirmPassword ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'"></i>
@@ -146,6 +156,14 @@
           </template>
           <template v-else>
             <form class="mt-2" @submit.prevent="handlePasswordLogin">
+              <input
+                type="text"
+                autocomplete="username"
+                name="username"
+                class="visually-hidden"
+                tabindex="-1"
+                aria-label="Account identifier"
+              />
               <div class="mb-3">
                 <label class="form-label">Password:</label>
                 <div class="input-group auth-pass-inputgroup">
@@ -154,6 +172,7 @@
                     class="form-control"
                     placeholder="Enter password"
                     v-model="passwordForm.password"
+                    autocomplete="current-password"
                     @keyup.enter="handlePasswordLogin"
                     :disabled="loading"
                   />
@@ -184,6 +203,14 @@
         <!-- Private Key -->
         <div v-show="loginMode === 'privateKey'" class="pt-1">
           <form class="mt-2" @submit.prevent="handlePrivateKeyLogin">
+            <input
+              type="text"
+              autocomplete="username"
+              name="username"
+              class="visually-hidden"
+              tabindex="-1"
+              aria-label="Account identifier"
+            />
             <div class="mb-3">
               <label class="form-label">Private Key:</label>
               <div class="input-group">
@@ -193,6 +220,7 @@
                   :class="{ 'is-invalid': quickLoginErrors.privateKey }"
                   v-model="quickLoginForm.privateKey"
                   placeholder="Enter your private key (Lz...)"
+                  autocomplete="off"
                   @blur="validateQuickLoginField('privateKey')"
                   :disabled="loading"
                 />
@@ -294,43 +322,53 @@
               <h5 class="modal-title">Restore from multiwallet</h5>
               <button type="button" class="btn-close" @click="closeMigrateModal"></button>
             </div>
-            <div class="modal-body">
-              <p class="text-muted mb-3">
-                Legacy multiwallet data was found. Enter your password to restore accounts into the new wallet format.
-              </p>
-              <div class="mb-3">
-                <label class="form-label">Password</label>
-                <div class="input-group">
-                  <input
-                    :type="showMigratePassword ? 'text' : 'password'"
-                    class="form-control"
-                    :class="{ 'is-invalid': migrateError }"
-                    v-model="migrateForm.password"
-                    placeholder="Enter your multiwallet password"
-                  />
-                  <button type="button" class="btn btn-light shadow-none" @click="showMigratePassword = !showMigratePassword">
-                    <i :class="showMigratePassword ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'"></i>
-                  </button>
+            <form @submit.prevent="confirmMigrate">
+              <div class="modal-body">
+                <input
+                  type="text"
+                  autocomplete="username"
+                  name="username"
+                  class="visually-hidden"
+                  tabindex="-1"
+                  aria-label="Account identifier"
+                />
+                <p class="text-muted mb-3">
+                  Legacy multiwallet data was found. Enter your password to restore accounts into the new wallet format.
+                </p>
+                <div class="mb-3">
+                  <label class="form-label">Password</label>
+                  <div class="input-group">
+                    <input
+                      :type="showMigratePassword ? 'text' : 'password'"
+                      class="form-control"
+                      :class="{ 'is-invalid': migrateError }"
+                      v-model="migrateForm.password"
+                      placeholder="Enter your multiwallet password"
+                      autocomplete="current-password"
+                    />
+                    <button type="button" class="btn btn-light shadow-none" @click="showMigratePassword = !showMigratePassword">
+                      <i :class="showMigratePassword ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'"></i>
+                    </button>
+                  </div>
+                  <div v-if="migrateError" class="invalid-feedback d-block">{{ migrateError }}</div>
                 </div>
-                <div v-if="migrateError" class="invalid-feedback d-block">{{ migrateError }}</div>
+                <div v-if="migrateAccountsCount > 0" class="alert alert-info py-2 mb-0">
+                  <i class="mdi mdi-information-outline me-1"></i>
+                  {{ migrateAccountsCount }} account(s) will be restored. Your new wallet will use the same password.
+                </div>
               </div>
-              <div v-if="migrateAccountsCount > 0" class="alert alert-info py-2 mb-0">
-                <i class="mdi mdi-information-outline me-1"></i>
-                {{ migrateAccountsCount }} account(s) will be restored. Your new wallet will use the same password.
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="closeMigrateModal">Cancel</button>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="migrating || !migrateForm.password"
+                >
+                  <span v-if="migrating" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                  {{ migrating ? 'Restoring...' : 'Restore' }}
+                </button>
               </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="closeMigrateModal">Cancel</button>
-              <button
-                type="button"
-                class="btn btn-primary"
-                :disabled="migrating || !migrateForm.password"
-                @click="confirmMigrate"
-              >
-                <span v-if="migrating" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{ migrating ? 'Restoring...' : 'Restore' }}
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
