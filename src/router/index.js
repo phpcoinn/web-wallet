@@ -89,6 +89,12 @@ const routes = [
     name: 'AccountManager',
     component: () => import('../pages/AccountManager.vue'),
     meta: { requiresAuth: true, layout: true }
+  },
+  {
+    path: '/connect',
+    name: 'Connect',
+    component: () => import('../pages/Connect.vue'),
+    meta: { requiresAuth: false, authLayout: false }
   }
 ]
 
