@@ -1,3 +1,5 @@
+import pkg from '../../package.json'
+
 /** Block time (seconds) — must match chain (legacy config uses 60). */
 export const MINER_BLOCK_TIME_SEC = Number(import.meta.env.VITE_BLOCK_TIME) || 60
 
@@ -6,5 +8,5 @@ export const MINER_PROTOCOL_VERSION = String(import.meta.env.VITE_MINER_VERSION 
 
 /** Matches package version when releasing miner stats to the network */
 export function minerInfoLabel() {
-  return 'phpcoin-web-wallet 1.2.1'
+  return `phpcoin-web-wallet ${pkg.version}`
 }
