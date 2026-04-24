@@ -8,6 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+electron/node_modules
+electron/release
 dist
 dist-ssr
 dev-dist

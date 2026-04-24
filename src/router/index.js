@@ -85,6 +85,18 @@ const routes = [
     meta: { requiresAuth: true, layout: true }
   },
   {
+    path: '/mining-benchmark',
+    name: 'MiningBenchmark',
+    component: () => import('../pages/MiningBenchmark.vue'),
+    meta: { requiresAuth: true, layout: true }
+  },
+  {
+    path: '/miner',
+    name: 'Miner',
+    component: () => import('../pages/Miner.vue'),
+    meta: { requiresAuth: true, layout: true }
+  },
+  {
     path: '/accounts',
     name: 'AccountManager',
     component: () => import('../pages/AccountManager.vue'),

@@ -153,7 +153,7 @@ if ($q === 'test') {
     exit;
 }
 
-// PHP Price – fetch from KlingEx/dapps coinInfo; daily snapshots in temp file → series = last 7 closes
+// PHP Price – live USD from external coinInfo API; append daily close to local JSON → series = last 7 closes for sparkline
 if ($q === 'getPrice') {
     $url = 'https://main1.phpcoin.net/dapps.php?url=PeC85pqFgRxmevonG6diUwT4AfF7YUPSm3/api.php?q=coinInfo';
     $ctx = stream_context_create([

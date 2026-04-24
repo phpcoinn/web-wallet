@@ -58,5 +58,8 @@ app.use(router)
 
 app.mount('#app')
 
-registerSW({ immediate: true })
+/** Service workers are unreliable on `file:` (Electron static bundle); omit so the shell always boots. */
+if (typeof window !== 'undefined' && window.location.protocol !== 'file:') {
+  registerSW({ immediate: true })
+}
 

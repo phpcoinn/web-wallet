@@ -496,7 +496,7 @@ export default {
       const n = parseFloat(price.value) || 0
       return { target: n }
     })
-    // Backend sends 24h change as percent (same units as coinInfo priceChange24h)
+    // Backend sends 24h change as percent (coinInfo `market.priceChange24h`); sparkline series = last 7 daily closes from wallet_api.php
     const priceChangeText = computed(() => {
       const d = priceChangeSinceLastWeek.value
       if (d === 0) return '0%'

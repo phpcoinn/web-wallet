@@ -5,14 +5,17 @@
   "description": "PHP Coin Web Wallet - Vue 3 SPA",
   "scripts": {
     "dev": "vite",
+    "dev_testnet": "vite --mode testnet",
     "build": "vite build",
     "build_dapps": "vite build --mode dapps",
-    "build_dapps_testnet":"vite build --mode dapps.testnet",
-    "preview": "vite preview"
+    "build_dapps_testnet": "vite build --mode dapps.testnet",
+    "preview": "vite preview",
+    "electron:dev": "npm --prefix electron run dev"
   },
   "dependencies": {
     "apexcharts": "^3.54.1",
     "dompurify": "^3.3.3",
+    "hash-wasm": "^4.12.0",
     "html5-qrcode": "^2.3.8",
     "idb": "^8.0.0",
     "jdenticon": "^3.3.0",

@@ -59,7 +59,7 @@ export const api = {
   },
 
   /**
-   * Get PHP price (local wallet_api.php – dummy for now, will fetch from exchange later)
+   * Get PHP price via `wallet_api.php?q=getPrice` (live USD from external coinInfo; 7-point series from daily snapshots).
    * @returns {Promise<{price: number, changeSinceLastWeek: number, series: number[]}>}
    */
   async getPrice() {

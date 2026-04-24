@@ -1,0 +1,78 @@
+{
+  "name": "phpcoin-wallet-electron",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Electron shell that loads the built PHP Coin web wallet from static files (../dist). Optional Vite dev URL via env.",
+  "homepage": "https://phpcoin.net",
+  "author": {
+    "name": "PHPCoin",
+    "email": "support@phpcoin.net"
+  },
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n vite,electron -c blue,green \"npm --prefix .. run dev\" \"wait-on http-get://127.0.0.1:3001 && cross-env PHPCOIN_DEV_SERVER_URL=http://127.0.0.1:3001/ electron .\"",
+    "build:wallet": "cross-env VITE_APP_BASE=./ npm --prefix .. run build",
+    "start": "electron .",
+    "preview": "npm run build:wallet && npm run start",
+    "dist:linux": "npm run build:wallet && electron-builder --linux AppImage deb",
+    "dist:linux:x64": "npm run build:wallet && electron-builder --linux AppImage deb --x64",
+    "dist:win": "npm run build:wallet && electron-builder --win nsis portable",
+    "dist:win:x64": "npm run build:wallet && electron-builder --win nsis portable --x64",
+    "pack": "npm run build:wallet && electron-builder --dir",
+    "postinstall": "electron-rebuild -f -w argon2",
+    "rebuild:native": "electron-rebuild -f -w argon2"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^33.4.1",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^8.0.1"
+  },
+  "dependencies": {
+    "argon2": "^0.44.0"
+  },
+  "build": {
+    "appId": "net.phpcoin.wallet",
+    "productName": "PHPCoin Wallet",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist",
+        "to": "dist"
+      }
+    ],
+    "extraMetadata": {
+      "main": "src/main.js"
+    },
+    "linux": {
+      "category": "Finance",
+      "maintainer": "PHPCoin <support@phpcoin.net>",
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

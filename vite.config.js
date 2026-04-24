@@ -4,8 +4,18 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 import fs from 'fs'
 
-/** What Vite uses internally for `base` when the env value has a ?query (pathname only + trailing slash). */
+/**
+ * Vite `base` option. Must preserve `./` for Electron/file:// builds (relative asset URLs).
+ * Do not map `./` → `/` — that emits `/assets/…`, which resolves to the filesystem root on `file:` URLs.
+ */
 function viteStrippedBase(userBase) {
+  const s = String(userBase).trim()
+  if (s === './' || s === '.') {
+    return './'
+  }
+  if (s.startsWith('./') || s.startsWith('../')) {
+    return s.endsWith('/') ? s : `${s}/`
+  }
   const raw = userBase.startsWith('/') ? userBase : `/${userBase}`
   const pathname = new URL(raw, 'http://vite.dev').pathname
   return pathname.endsWith('/') ? pathname : `${pathname}/`
@@ -101,13 +111,16 @@ export default defineConfig(({ mode }) => {
 
   const baseForScope = base
 
+  /** Only for dapps-style bases with `?` in the URL. Never run for `./` — replacing `/` → `./` corrupts HTML/JS. */
+  const needsQueryBaseRewrite = typeof rawBase === 'string' && rawBase.includes('?')
+
   return {
     // Vite strips ?query from base internally; rewriteDistBaseAfterBuild fixes dist/*.html, *.js, etc.
     base: strippedBase,
     plugins: [
       vue(),
       servePublicUnderBase(),
-      ...(base !== strippedBase ? [rewriteDistBaseAfterBuild(base, strippedBase)] : []),
+      ...(needsQueryBaseRewrite ? [rewriteDistBaseAfterBuild(base, strippedBase)] : []),
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: false,
