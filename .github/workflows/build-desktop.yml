@@ -3,21 +3,13 @@ name: Desktop builds (Windows & Linux)
 permissions:
   contents: write
 
+# Tags only (+ manual): avoids duplicate runs when you push master then a tag
+# (or `git push origin master v*`) — both would otherwise trigger this workflow.
 on:
   workflow_dispatch:
   push:
-    branches:
-      - master
     tags:
       - "v*"
-    paths:
-      - "electron/**"
-      - "src/**"
-      - "public/**"
-      - "vite.config.js"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/build-desktop.yml"
 
 jobs:
   build-windows:
