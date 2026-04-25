@@ -2,7 +2,6 @@
 
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
-const { runMiningBenchmark, requestCancel } = require('./miningBenchmarkNative')
 const { hashArgon: minerNativeHashArgon, terminatePool: terminateMinerNativePool } = require('./minerNativePool')
 
 /**
@@ -52,14 +51,6 @@ function createWindow() {
 
   return win
 }
-
-ipcMain.handle('mining-benchmark-native', async (event, payload) => {
-  return runMiningBenchmark(payload || {}, event.sender)
-})
-
-ipcMain.on('mining-benchmark-cancel', () => {
-  requestCancel()
-})
 
 /**
  * Mining Argon2i hash (PHP-compatible encoded string). Uses a reusable worker_threads pool

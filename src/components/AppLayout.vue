@@ -275,12 +275,6 @@
                                     </router-link>
                                 </li>
                                 <li>
-                                    <router-link to="/mining-benchmark" active-class="active">
-                                        <i data-feather="cpu"></i>
-                                        <span>Mining speed</span>
-                                    </router-link>
-                                </li>
-                                <li>
                                     <router-link to="/miner" active-class="active">
                                         <i data-feather="zap"></i>
                                         <span>Miner</span>

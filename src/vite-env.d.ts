@@ -4,16 +4,17 @@
 interface PhpcoinElectronBridge {
   isElectron: boolean
   versions: { electron: string; chrome: string }
-  miningBenchmarkNativeRun?: (payload: Record<string, unknown>) => Promise<{
+  minerNativeArgon?: (payload: {
+    password: string
+    saltUtf8: string
+    memoryCost: number
+    timeCost: number
+    parallelism: number
+  }) => Promise<{
     ok?: boolean
-    hashes?: number
-    elapsedMs?: number
-    cancelled?: boolean
+    encoded?: string
     error?: string
-    workerCount?: number
   }>
-  miningBenchmarkCancel?: () => void
-  onMiningBenchmarkProgress?: (fn: (data: { hashes: number; elapsedMs: number }) => void) => () => void
 }
 
 declare global {
