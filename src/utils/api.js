@@ -85,11 +85,16 @@ export const api = {
   /**
    * Get transaction history (main API)
    */
-  async getTransactions(address, page = 1, limit = 20) {
+  async getTransactions(address, page = 1, limit = 20, offset = null) {
+    const safePage = Math.max(1, parseInt(page, 10) || 1)
+    const safeLimit = Math.max(1, parseInt(limit, 10) || 20)
+    const safeOffset = offset == null
+      ? (safePage - 1) * safeLimit
+      : Math.max(0, parseInt(offset, 10) || 0)
     return callApi(MAIN_API_URL, 'getTransactions', {
       address,
-      page: page.toString(),
-      limit: limit.toString()
+      limit: safeLimit.toString(),
+      offset: safeOffset.toString()
     })
   },
 

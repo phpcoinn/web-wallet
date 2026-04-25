@@ -139,7 +139,7 @@
 
     <!-- Wallet Balance + Transactions (our content + Minia theme) -->
     <div class="row g-4">
-      <div class="col-xl-5">
+      <div class="col-xl-6">
         <div class="card">
           <div class="card-header align-items-center d-flex">
             <h5 class="card-title mb-0 flex-grow-1">Account</h5>
@@ -222,7 +222,7 @@
       </div>
 
       <!-- Right: Transactions -->
-      <div class="col-xl-7">
+      <div class="col-xl-6">
         <div class="card">
           <div class="card-header align-items-center d-flex">
             <h4 class="card-title mb-0 flex-grow-1">Transactions</h4>
@@ -328,6 +328,13 @@ function initSparklineChart(el, seriesData, options = {}, layoutAttempt = 0) {
     }
     return
   }
+  // Defensive bound: malformed layout can report extreme widths and make Apex allocate huge buffers.
+  const MAX_CHART_WIDTH = 1200
+  if (w > 20000) {
+    console.warn('Skip sparkline render due to unrealistic width:', w)
+    return
+  }
+  const chartWidth = Math.min(MAX_CHART_WIDTH, Math.max(1, Math.floor(w)))
   if (el.__apexChart) {
     el.__apexChart.destroy()
     el.__apexChart = null
@@ -344,7 +351,12 @@ function initSparklineChart(el, seriesData, options = {}, layoutAttempt = 0) {
         return [v, v, v, v, v, v, v]
       })() : [])
   if (data.length === 0 && !options.fallbackAttr) return
-  const safeData = data.length > 0 ? data : [0, 0, 0, 0, 0, 0, 0]
+  // Guard against unbounded backend arrays causing ApexCharts OOM on dashboard load.
+  const MAX_POINTS = 200
+  const normalized = (data.length > MAX_POINTS ? data.slice(-MAX_POINTS) : data)
+    .map((v) => Number(v))
+    .filter((v) => Number.isFinite(v))
+  const safeData = normalized.length > 0 ? normalized : [0, 0, 0, 0, 0, 0, 0]
   const minVal = Math.min.apply(null, safeData)
   const maxVal = Math.max.apply(null, safeData)
   const isFlat = minVal === maxVal
@@ -364,7 +376,7 @@ function initSparklineChart(el, seriesData, options = {}, layoutAttempt = 0) {
     chart: {
       type: 'line',
       height: 50,
-      width: Math.max(1, Math.floor(w)),
+      width: chartWidth,
       sparkline: { enabled: true }
     },
     colors,
@@ -378,7 +390,14 @@ function initSparklineChart(el, seriesData, options = {}, layoutAttempt = 0) {
     }
   }
   const chart = new ApexCharts(el, opts)
-  chart.render()
+  const rendered = chart.render()
+  if (rendered && typeof rendered.catch === 'function') {
+    rendered.catch((err) => {
+      try { chart.destroy() } catch (_) {}
+      if (el.__apexChart === chart) el.__apexChart = null
+      console.error('Sparkline render failed:', err)
+    })
+  }
   el.__apexChart = chart
 }
 
@@ -386,6 +405,25 @@ export default {
   name: 'Dashboard',
   components: { Address, PasswordConfirmModal },
   setup() {
+    function hasDebugFlag(name) {
+      if (typeof window === 'undefined') return false
+      const url = new URL(window.location.href)
+      if (url.searchParams.get(name) === '1') return true
+      const hash = window.location.hash || ''
+      const qIdx = hash.indexOf('?')
+      if (qIdx === -1) return false
+      const hashParams = new URLSearchParams(hash.slice(qIdx + 1))
+      return hashParams.get(name) === '1'
+    }
+
+    const debugDisable = {
+      price: hasDebugFlag('dbgNoPrice'),
+      network: hasDebugFlag('dbgNoNetwork'),
+      history: hasDebugFlag('dbgNoHistory'),
+      qr: hasDebugFlag('dbgNoQr'),
+      tx: hasDebugFlag('dbgNoTx')
+    }
+
     const authStore = useAuthStore()
     const balance = ref('0.00')
     const rewards = ref('0.00')
@@ -404,6 +442,10 @@ export default {
     const privateKeyRevealed = ref(false)
     const copiedField = ref('')
     const addressVerified = ref(null) // null=loading, true=verified, false=unverified
+    const dashboardLoading = ref(false)
+    const historyLoading = ref(false)
+    let activeRefreshId = 0
+    let lastLoadedAccountKey = ''
 
     const whatsNewPayload = ref(null)
     const showWhatsNew = ref(false)
@@ -420,19 +462,28 @@ export default {
       showWhatsNew.value = false
     }
 
-    const displayPublicKey = computed(() => {
-      if (!authStore.masterKey) return ''
-      if (authStore.isQuickLogin) {
-        return activeAccount.value?.publicKey || getPublicKey(authStore.masterKey) || ''
+    const displayPublicKey = ref('')
+
+    function refreshDisplayPublicKey() {
+      if (!authStore.masterKey) {
+        displayPublicKey.value = ''
+        return
       }
-      if (!activeAccount.value) return ''
+      if (authStore.isQuickLogin) {
+        displayPublicKey.value = activeAccount.value?.publicKey || getPublicKey(authStore.masterKey) || ''
+        return
+      }
+      if (!activeAccount.value) {
+        displayPublicKey.value = ''
+        return
+      }
       try {
         const pk = accountsStore.getDecryptedPrivateKey(activeAccount.value, authStore.masterKey)
-        return getPublicKey(pk) || ''
+        displayPublicKey.value = getPublicKey(pk) || ''
       } catch {
-        return ''
+        displayPublicKey.value = ''
       }
-    })
+    }
 
     const latestTransactions = computed(() => transactions.value.slice(0, 5))
 
@@ -594,7 +645,7 @@ export default {
         nodeInfoLoading.value = true
         const data = await api.getNodeInfo()
         nodeInfo.value = typeof data === 'object' && data !== null ? data : {}
-        loadNetworkDifficultyChart()
+        if (!debugDisable.network) loadNetworkDifficultyChart()
       } catch (error) {
         console.error('Failed to load node info:', error)
         nodeInfo.value = {}
@@ -605,7 +656,9 @@ export default {
 
     async function loadNetworkDifficultyChart() {
       const data = await api.getNetworkDifficulty(100)
-      const difficulties = Array.isArray(data?.difficulties) ? data.difficulties : []
+      const difficultiesRaw = Array.isArray(data?.difficulties) ? data.difficulties : []
+      // Defensive cap: if backend misbehaves and returns too many points, keep chart lightweight.
+      const difficulties = difficultiesRaw.slice(-100)
       const el = document.querySelector('#network-difficulty-chart')
       initSparklineChart(el, difficulties, {
         defaultColor: '#4ba6ef',
@@ -709,13 +762,17 @@ export default {
     }
 
     async function loadBalanceHistoryAndChart() {
+      if (debugDisable.history) return
       const addr = activeAccount.value?.address
       const curBal = parseFloat(balance.value) || 0
       if (!addr) return
+      if (historyLoading.value) return
       await nextTick()
+      historyLoading.value = true
       try {
         const allTx = []
-        for (let page = 1; page <= 5; page++) {
+        // Keep dashboard startup responsive: enough history for 7-day chart without deep scans.
+        for (let page = 1; page <= 2; page++) {
           const data = await api.getTransactions(addr, page, 100)
           let txList = Array.isArray(data) ? data : (data?.transactions || data?.data || [])
           if (!Array.isArray(txList) && typeof txList === 'object') txList = Object.values(txList)
@@ -740,6 +797,49 @@ export default {
         rewards.value = '0.00'
         rewardsChangeSinceLastWeek.value = 0
         initRewardsChart([0, 0, 0, 0, 0, 0, 0])
+      } finally {
+        historyLoading.value = false
+      }
+    }
+
+    async function refreshDashboard(force = false) {
+      const accountKey = `${activeAccount.value?.address || ''}|${authStore.masterKey ? '1' : '0'}`
+      if (!force && accountKey && accountKey === lastLoadedAccountKey) return
+      if (dashboardLoading.value) return
+
+      dashboardLoading.value = true
+      const refreshId = ++activeRefreshId
+      try {
+        await checkAddressVerification()
+        if (refreshId !== activeRefreshId) return
+
+        await Promise.all([
+          loadNodeInfo(),
+          loadBalance(),
+          debugDisable.tx ? Promise.resolve() : loadTransactions(),
+          loadPrice()
+        ])
+        if (refreshId !== activeRefreshId) return
+
+        if (!debugDisable.qr) {
+          await Promise.resolve(generateQRCode())
+        }
+        nextTick(() => {
+          runBalanceCounter()
+          runRewardsCounter()
+          runPriceCounter()
+        })
+        // Defer heavier historical chart load until after initial paint.
+        setTimeout(() => {
+          if (refreshId !== activeRefreshId) return
+          loadBalanceHistoryAndChart()
+        }, 80)
+
+        lastLoadedAccountKey = accountKey
+      } finally {
+        if (refreshId === activeRefreshId) {
+          dashboardLoading.value = false
+        }
       }
     }
 
@@ -907,21 +1007,38 @@ export default {
     const DUMMY_PRICE = 0.00012
     const DUMMY_CHANGE = 1.25
     const DUMMY_SERIES = [0.00010, 0.00011, 0.00011, 0.00012, 0.00011, 0.00012, 0.00012]
+    const lastPriceChartSig = ref('')
+
+    function normalizePriceSeries(series, fallbackPrice) {
+      const fallback = [fallbackPrice, fallbackPrice, fallbackPrice, fallbackPrice, fallbackPrice, fallbackPrice, fallbackPrice]
+      if (!Array.isArray(series)) return fallback
+      const cleaned = series
+        .map((v) => Number(v))
+        .filter((v) => Number.isFinite(v) && v >= 0)
+      if (cleaned.length === 0) return fallback
+      // Price sparkline is intentionally short (daily closes). Keep only the tail.
+      return cleaned.slice(-7)
+    }
 
     function initPriceChart(series, p) {
-      const data = Array.isArray(series) && series.length > 0 ? series : [p, p, p, p, p, p, p]
+      const data = normalizePriceSeries(series, p)
+      const sig = data.join(',')
+      if (sig === lastPriceChartSig.value) return
+      lastPriceChartSig.value = sig
       initSparklineChart(document.querySelector('#price-chart'), data, { defaultColor: '#2ab57d', fallbackAttr: 'data-price' })
     }
 
     const loadPrice = async () => {
+      if (debugDisable.price) return
       try {
         const data = await api.getPrice()
         const p = data?.price ?? data
         const change = data?.changeSinceLastWeek ?? 0
-        const series = data?.series ?? []
-        price.value = String(typeof p === 'number' ? p : parseFloat(p) || 0)
+        const parsedPrice = typeof p === 'number' ? p : parseFloat(p) || 0
+        const series = normalizePriceSeries(data?.series, parsedPrice)
+        price.value = String(parsedPrice)
         priceChangeSinceLastWeek.value = typeof change === 'number' ? change : parseFloat(change) || 0
-        initPriceChart(series, parseFloat(price.value) || 0)
+        initPriceChart(series, parsedPrice)
         runPriceCounter()
       } catch (error) {
         console.error('Failed to load price:', error)
@@ -955,30 +1072,16 @@ export default {
 
     onMounted(async () => {
       refreshWhatsNew()
-      await checkAddressVerification()
-      loadNodeInfo()
-      await loadBalance()
-      loadRewards()
-      await loadTransactions()
-      loadPrice()
-      generateQRCode()
-      nextTick(() => {
-        runBalanceCounter()
-        runRewardsCounter()
-        runPriceCounter()
-      })
-      await loadBalanceHistoryAndChart()
+      refreshDisplayPublicKey()
+      await refreshDashboard(true)
     })
 
-    watch([activeAccount, () => authStore.masterKey], async () => {
+    watch([() => activeAccount.value?.address, () => authStore.masterKey], async () => {
       revealedPrivateKey.value = ''
       privateKeyRevealed.value = false
       addressVerified.value = null
-      await checkAddressVerification()
-      await loadBalance()
-      loadTransactions()
-      generateQRCode()
-      await loadBalanceHistoryAndChart()
+      refreshDisplayPublicKey()
+      await refreshDashboard()
     })
 
     watch(balance, () => {

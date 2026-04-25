@@ -64,8 +64,17 @@ function wallet_price_history_read($path) {
  * @param array<int, array{t:int, p:float}> $records
  * @return array<int, array{t:int, p:float}>
  */
+function wallet_price_round($price) {
+    return round((float)$price, 8);
+}
+
+/**
+ * @param array<int, array{t:int, p:float}> $records
+ * @return array<int, array{t:int, p:float}>
+ */
 function wallet_price_history_append_daily(array $records, $now, $price) {
     $oneDay = 86400;
+    $price = wallet_price_round($price);
     if ($records === []) {
         $records[] = ['t' => $now, 'p' => $price];
         return $records;
@@ -90,7 +99,7 @@ function wallet_price_series_last7(array $records) {
     }
     $slice = array_slice($records, -7);
     return array_map(static function ($r) {
-        return $r['p'];
+        return wallet_price_round($r['p']);
     }, $slice);
 }
 
@@ -174,7 +183,7 @@ if ($q === 'getPrice') {
         echo json_encode(['status' => 'error', 'error' => 'Invalid price response']);
         exit;
     }
-    $price = isset($info['usdPrice']) ? (float) $info['usdPrice'] : 0.0;
+    $price = wallet_price_round(isset($info['usdPrice']) ? (float) $info['usdPrice'] : 0.0);
     // API returns percent (e.g. 2.5 = +2.5%), not absolute $ move
     $changePct24h = isset($info['market']['priceChange24h']) ? (float) $info['market']['priceChange24h'] : 0.0;
 
