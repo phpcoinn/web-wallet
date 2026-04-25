@@ -594,9 +594,7 @@ export default {
         nodeInfoLoading.value = true
         const data = await api.getNodeInfo()
         nodeInfo.value = typeof data === 'object' && data !== null ? data : {}
-        if (nodeInfo.value.height != null) {
-          loadNetworkDifficultyChart(nodeInfo.value.height)
-        }
+        loadNetworkDifficultyChart()
       } catch (error) {
         console.error('Failed to load node info:', error)
         nodeInfo.value = {}
@@ -605,19 +603,9 @@ export default {
       }
     }
 
-    async function loadNetworkDifficultyChart(currentHeight) {
-      const difficulties = []
-      const start = Math.max(1, currentHeight - 99)
-      const end = currentHeight
-      const batchSize = 20
-      for (let h = start; h <= end; h += batchSize) {
-        const promises = []
-        for (let i = 0; i < batchSize && h + i <= end; i++) {
-          promises.push(api.getBlock(h + i).then(b => (b && b.difficulty != null ? parseInt(b.difficulty, 10) || 0 : 0)).catch(() => 0))
-        }
-        const batch = await Promise.all(promises)
-        difficulties.push(...batch)
-      }
+    async function loadNetworkDifficultyChart() {
+      const data = await api.getNetworkDifficulty(100)
+      const difficulties = Array.isArray(data?.difficulties) ? data.difficulties : []
       const el = document.querySelector('#network-difficulty-chart')
       initSparklineChart(el, difficulties, {
         defaultColor: '#4ba6ef',

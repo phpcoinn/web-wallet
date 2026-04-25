@@ -181,6 +181,13 @@ export const api = {
   },
 
   /**
+   * Get latest block difficulties (oldest -> newest) for network chart.
+   */
+  async getNetworkDifficulty(count = 100) {
+    return callApi(MAIN_API_URL, 'getNetworkDifficulty', { count: String(count) })
+  },
+
+  /**
    * Get block by height (returns difficulty, transactions, etc.)
    */
   async getBlock(height) {
