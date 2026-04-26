@@ -115,13 +115,15 @@ See [docs/LOGIN_ARCHITECTURE.md](LOGIN_ARCHITECTURE.md). Password = multiwallet;
 
 **Goal:** Allow users to migrate/import accounts from an older PHP Coin multiwallet (legacy backup format, different encryption, or previous wallet version).
 
+**Shipped (web wallet):** When legacy **`walletData`** exists in the browser, **Login** shows a **migrate** flow (`Login.vue` + `utils/legacyWallet.js`): decrypt with the old password, import accounts into IndexedDB, optionally clear legacy storage from **AccountManager** (“Delete legacy data”). See **`docs/PROJECT_STATUS.md`** for current behavior.
+
 | Step | Task | Status |
 |------|------|--------|
-| 9.1 | **Identify legacy formats** – Document older multiwallet backup/export formats (file structure, encryption) | ⬜ |
-| 9.2 | **Migration UI** – Add “Migrate from older wallet” option (e.g. in AccountManager or RestoreAccount) | ⬜ |
-| 9.3 | **Format detection** – Detect legacy format from uploaded file; route to appropriate parser | ⬜ |
-| 9.4 | **Decrypt & convert** – Decrypt legacy backup with user password; convert to current account structure | ⬜ |
-| 9.5 | **Merge or replace** – Option to merge into existing accounts or replace; confirm before applying | ⬜ |
+| 9.1 | **Identify legacy formats** – `legacyWallet.js` handles in-browser legacy wallet blob | ✅ |
+| 9.2 | **Migration UI** – Modal on Login when legacy data detected | ✅ |
+| 9.3 | **Format detection** – Legacy localStorage keys / walletData presence | ✅ |
+| 9.4 | **Decrypt & convert** – `decryptLegacyWallet` → current accounts + `deriveMasterKey` | ✅ |
+| 9.5 | **Merge or replace** – Import into current DB; user can remove legacy blob after migration | ✅ |
 
 ---
 

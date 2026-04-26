@@ -44,7 +44,7 @@
                 <Link2 :size="20" style="color: #5156be;" />
                 <h2 class="h6 mb-0" style="color: #313533;">Payment link</h2>
               </div>
-              <p class="text-muted small mb-3">
+              <p class="text-muted mb-3">
                 Generates a <strong>signed</strong> link: you confirm with your wallet password (or session). The sender sees a green check on Send if the link was not altered.
               </p>
 

@@ -1,14 +1,18 @@
 # PHP Coin Web Wallet – Project Status
 
-**Last updated:** 2026-03-23
+**Last updated:** 2026-04-22
 
-**Release:** **1.0.0** — initial published version (see `package.json` and `CHANGELOG.md`).
+**Release:** **`1.2.1`** — see `package.json` (also shown in the app footer via `APP_VERSION`).
 
 ---
 
 ## Overview
 
-Vue 3 SPA for the PHP Coin wallet: login (password, private key, quick login), dashboard, send/receive/swap (testnet), transactions, address book, masternodes, and account management. Uses the Minia admin theme (Bootstrap) with Tailwind CSS v4 for utilities, customized for PHP Coin branding.
+Vue 3 SPA for the PHP Coin wallet: login (password, private key, quick login), **signed autologin links** (`#/autologin`), dashboard, send/receive/**swap (testnet only)**, transactions, address book, **masternodes**, account management, and **Verifier** integration (signed `loginrequest` opens the Verifier dapp without standard login). **PWA** enabled (service worker). Uses the Minia admin theme (Bootstrap) with Tailwind CSS v4 for utilities, customized for PHP Coin branding.
+
+**Desktop:** optional **Electron** shell in **`electron/`** (separate `package.json`, electron-builder **~33**). Produces **Linux** AppImage + deb and **Windows** NSIS + portable. **CI:** [`.github/workflows/build-desktop.yml`](../.github/workflows/build-desktop.yml) — builds Windows + Linux x64 on **`v*`** tag push or **manual** dispatch; `publish-release` job attaches artifacts to a **GitHub Release** (tag only). `preload` exposes native **Argon2** benchmark for the Miner page when running in Electron.
+
+**Deploy:** Production builds target **mainnet** and **testnet** via `npm run build_dapps` and `npm run build_dapps_testnet` (see `.env.dapps` / `.env.dapps.testnet`). **Live verification:** mainnet and testnet deployments have been smoke-tested on production (2026-04).
 
 ---
 
@@ -23,6 +27,7 @@ Vue 3 SPA for the PHP Coin wallet: login (password, private key, quick login), d
 | UI base     | Minia (Bootstrap + MDI/FA via **`VITE_COMMON_ASSETS`**); Feather icons in sidebar (JS from same host) |
 | Utilities   | Tailwind CSS v4 (theme + utilities only; preflight off to avoid Bootstrap conflicts) |
 | Crypto      | phpcoin-crypto (GitHub), idb (IndexedDB); wallet encryption in `src/utils/crypto.js` |
+| PWA         | `vite-plugin-pwa` — `registerSW` in `src/main.js` |
 
 ---
 
@@ -31,7 +36,7 @@ Vue 3 SPA for the PHP Coin wallet: login (password, private key, quick login), d
 ```
 src/
 ├── App.vue                 # Root: layout selection (AppLayout / AuthLayout) by route meta
-├── main.js                 # Entry: Tailwind/main.css + theme-modern; Minia CSS from VITE_COMMON_ASSETS
+├── main.js                 # Entry: Tailwind/main.css + theme-modern; Minia CSS from VITE_COMMON_ASSETS; PWA registerSW
 ├── components/
 │   ├── AppLayout.vue       # Authenticated layout: header, sidebar, slot, footer, dynamic script load for theme JS
 │   ├── AuthLayout.vue      # Login layout: logo, slot, footer, carousel
@@ -39,8 +44,9 @@ src/
 │   ├── ChangelogModal.vue
 │   └── PasswordConfirmModal.vue
 ├── pages/
-│   ├── Login.vue
+│   ├── Login.vue           # Legacy multiwallet migration modal (when old walletData present)
 │   ├── QuickLogin.vue
+│   ├── Autologin.vue       # Signed request + password decrypt (Telegram / deep links)
 │   ├── RestoreAccount.vue
 │   ├── Dashboard.vue
 │   ├── Send.vue
@@ -52,7 +58,7 @@ src/
 │   └── AccountManager.vue
 ├── router/index.js         # Routes + auth guard; `/create-account` redirects to Login with setup intent
 ├── stores/                 # auth, accounts, theme
-└── utils/                  # api, wallet, crypto, db, toast, etc.
+└── utils/                  # api, wallet, crypto, db, toast, autologin.js, verifierLogin.js, mainUrl.js, legacyWallet.js, assets.js, …
 ```
 
 - **`public/`** – `wallet_api.php`, PWA icons, `index.html` shell; optional **`public/assets/`** for flags/images if deployed without a separate static host.
@@ -67,7 +73,8 @@ src/
 - **Login / Quick-login** use `AuthLayout` (no sidebar).
 - **Auth guard:** unauthenticated users hitting protected routes → `/login`; authenticated users hitting `/login` or `/quick-login` → `/dashboard`.
 - **Login modes:** See [docs/FEATURES.md](FEATURES.md). **Password** = multi-account wallet (accounts in IndexedDB, private keys encrypted with password, decrypt only when needed; optional "remember password"). **Private key** and **Quick login** = one-account wallet (session only; cannot be saved as permanent accounts; Quick login is for testing).
-- **API:** **`VITE_MAIN_URL`** (e.g. `https://main1.phpcoin.net`) — node API is **`{VITE_MAIN_URL}/api.php`**, explorer links **`{VITE_MAIN_URL}/apps/explorer/`**. **`VITE_WALLET_API_URL`** is the full URL to **`wallet_api.php`** (getPrice, test). **`wallet_api.php`** lives in **`public/`** and is copied into `dist/` on build.
+- **API:** **`VITE_MAIN_URL`** (required, `https://…`) — node API is **`{VITE_MAIN_URL}/api.php`** (`MAIN_API_URL` in code). Explorer base is **`{VITE_MAIN_URL}/apps/explorer/`**. **`VITE_WALLET_API_URL`** targets **`wallet_api.php`** (`getPrice`, `test`): **https URL** or **same-origin path** (e.g. `/dapps.php?url=…/wallet_api.php` for dapps builds). **`wallet_api.php`** lives in **`public/`** and is copied into `dist/` on build.
+- **Static base:** **`VITE_APP_BASE`** — Vite `base` for bundled assets; deploy **`index.php`** + **`assets/`** under that path on the server (hash router; no SPA rewrite needed).
 
 ---
 
@@ -93,10 +100,16 @@ src/
 - [x] **Session persistence** – Auth session in sessionStorage so user stays logged in on refresh.
 - [x] **PasswordConfirmModal** – Reusable modal for password confirmation (add account, delete, export, delete all).
 - [x] **Login + RestoreAccount** – First-time setup and add-account flows via Login; restore from backup when no accounts (`/restore-account`).
-- [x] **Dashboard top row** – Four stat cards with Minia theme: (1) **Balance** – sparkline, counter (k/m format), “Since last week” change; (2) **Rewards** – type‑0 transactions only, sparkline, counter, “Since last week”; (3) **Network** – block height, difficulty chart (last 100 blocks), Synced/Offline status; (4) **PHP Price** – live price from KlingEx via `wallet_api.php`, sparkline, “Since last week” % change.
+- [x] **Dashboard top row** – Four stat cards with Minia theme: (1) **Balance** – sparkline, counter (k/m format), “Since last week” change; (2) **Rewards** – type‑0 transactions only, sparkline, counter, “Since last week”; (3) **Network** – block height, difficulty chart (last 100 blocks), Synced/Offline status; (4) **PHP Price** – **live USD** from the external **coinInfo** API (via `wallet_api.php?q=getPrice`); **24h % change** from the same payload; sparkline **series** = last **7 daily closes** persisted server-side (not interpolated from a single change value).
 - [x] **Dashboard Account block** – QR code of address (replaces jdenticon); account name, description (if exists), balance (bold); address, public key, private key (hidden with reveal) with copy buttons; address verification via `getPublicKey` API – unverified shows warning alert + Verify button (PHPCoin Verifier); Trade (KlingEx) and Direct buy (buy.phpcoin.net) CTA buttons; Send/Receive links.
 - [x] **Dashboard Transactions block** – Latest 5 transactions; loading/empty states; “View all” link to full history.
 - [x] **API getPublicKey** – Added `api.getPublicKey(address)` for address verification on network ([PHPCoin Node API](https://main1.phpcoin.net/doc/#api-API-getPublicKey)).
+- [x] **Masternodes** – Create/remove flows with node API, client-side signature base, SweetAlert feedback; route `/masternodes`.
+- [x] **Swap (testnet)** – Visible when **`VITE_CHAIN_ID=01`** (`CHAIN_ID` in `src/utils/wallet.js`); sidebar + route guard; build with **`npm run build_dapps_testnet`** / `.env.dapps.testnet`.
+- [x] **Verifier login** – `buildVerifierLoginUrl` (`src/utils/verifierLogin.js`): signed **`loginrequest`** opens Verifier dapp without standard login.
+- [x] **Autologin page** – `Autologin.vue` + `utils/autologin.js` (signed payload, password decrypt, nonce replay protection).
+- [x] **Migrate from older multiwallet** – Legacy `walletData` migration in **`Login.vue`** + **`utils/legacyWallet.js`**; optional delete old storage from **AccountManager**.
+- [x] **Dapps deploy** – **`build_dapps`** / **`build_dapps_testnet`**; deployed mainnet + testnet on dapps node (per project tracking).
 
 ---
 
@@ -104,15 +117,16 @@ src/
 
 - [x] **Layout** – AppLayout is the single wrapper for all authenticated pages (no separate layout components).
 - [x] **Accounts feature** – List, add, switch, naming, persistence, import/export, delete.
-- [ ] **Migrate from older multiwallet** – Add option to migrate/import accounts from an older PHP Coin multiwallet (e.g. legacy backup format, different encryption, or previous wallet version).
+- [x] **Migrate from older multiwallet** – Implemented: migrate modal on Login when legacy data exists; clear legacy blob from AccountManager when done.
 
-**Step-by-step plan:** See [docs/FEATURES.md](FEATURES.md) for a breakdown of each feature into concrete steps.
+**Feature checklist (detailed steps):** [docs/FEATURES.md](FEATURES.md) — may lag behind this file; **PROJECT_STATUS** is the source of truth for shipped behavior.
 
 ---
 
 ## Optional / Future
 
-- **Price history fetch** – Implement real price history for the PHP Price chart. Currently `wallet_api.php` fetches live price from KlingEx coinInfo but the 7-day series is interpolated from `priceChange24h`. Need to fetch actual historical prices (e.g. from exchange API) for accurate chart data.
+- **Mining** – Not in the web wallet yet; this is the main **feature gap** vs the older **Electron** wallet. Would require node/miner integration in the browser (usually not practical for real PoW) or a **separate mining app** / **link to** the node or official miner; product decision needed.
+- **Richer price / OHLC** – Optional: pull multi-interval candles directly from an exchange API for the sparkline (today: daily closes from `wallet_api.php` snapshots + live spot from coinInfo).
 - **Optimize API calls** – Reduce redundant or parallel API requests (e.g. Dashboard loads balance, transactions, node info, price, network difficulty separately; consider batching, caching, or consolidating where possible).
 - **Optimize app assets** – Theme CSS/JS/fonts are primarily loaded from **`VITE_COMMON_ASSETS`**; optional `public/assets/` for same-origin images/libs should stay consistent with deploy base. Future: consolidate paths and cache policy.
 - **Search** – Currently opens main node explorer in new tab with query; in-app search can be added later.
@@ -126,9 +140,12 @@ src/
 
 ```bash
 npm install
-npm run dev    # dev server
-npm run build # production build
-npm run preview # preview production build
+npm run dev              # dev server
+npm run dev_testnet      # dev with .env.testnet (CHAIN_ID 01)
+npm run build            # production build (default env)
+npm run build_dapps      # dapps mainnet mode (.env.dapps)
+npm run build_dapps_testnet  # dapps testnet (.env.dapps.testnet)
+npm run preview          # preview production build
 ```
 
 ### Base path (configurable)
@@ -173,6 +190,8 @@ The router uses `import.meta.env.BASE_URL`, which Vite sets from `base`.
 
 4. **Main API** – Set **`VITE_MAIN_URL`**; the app calls **`{VITE_MAIN_URL}/api.php`** for getBalance, getTransactions, send, etc.
 
+5. **Dapps PHP entry** – Deploy **`public/index.php`** (or your host’s entry) so the app loads from **`VITE_APP_BASE`**. If you deploy without **`index.html`**, ensure the PHP entry loads the built **`assets/index*.js`** and **`assets/index*.css`** paths Vite emits.
+
 ---
 
 ## Notes for Future Tracking
@@ -180,7 +199,7 @@ The router uses `import.meta.env.BASE_URL`, which Vite sets from `base`.
 - **Tailwind:** Only `@import "tailwindcss/theme"` and `@import "tailwindcss/utilities"` in `src/assets/css/main.css` to avoid preflight vs Bootstrap conflicts.
 - **Minia JS/CSS:** Theme links/scripts are loaded from **`VITE_COMMON_ASSETS`** when set (full `https://` URL). Optional fallbacks under `public/assets/` apply only if you ship those files on the same origin.
 - **Active account:** Set by login flows in `Login.vue`; header user menu in `AppLayout` shows jdenticon avatar, bold full address, balance (PHP) from `api.getBalance`, and dropdown to switch to other accounts (with jdenticon, address, name, balance per account); `authStore.activeAccount` drives avatar and balance refresh.
-- **Dashboard:** (1) Top row: Balance, Rewards, Network, PHP Price cards. (2) Account block: QR code, name, description, balance, address/public/private keys with copy, verification check (getPublicKey API), Trade/Direct buy buttons, Send/Receive. (3) Transactions block: latest 5 tx, View all. Price from `public/wallet_api.php?q=getPrice`. Network difficulty from `getBlock`. Rewards from type‑0 transactions. Address verification via `api.getPublicKey`.
+- **Dashboard:** (1) Top row: Balance, Rewards, Network, PHP Price cards. (2) Account block: QR code, name, description, balance, address/public/private keys with copy, verification check (getPublicKey API), Trade/Direct buy buttons, Send/Receive. (3) Transactions block: latest 5 tx, View all. **Price:** `wallet_api.php?q=getPrice` → external **coinInfo** for spot + 24h change; local file stores **daily** USD closes for the 7-point sparkline. Network difficulty from `getBlock`. Rewards from type‑0 transactions. Address verification via `api.getPublicKey`.
 - **Brand:** Logo URL `https://node1.phpcoin.net/apps/common/img/logo.png`; primary color variables in `main.css` (`--phpcoin-primary`, `--phpcoin-primary-dark`).
 - **Dev vs prod:** Nginx can switch between `dev/nginx-phpcoin.conf` (proxy to Vite + optional `/assets/`) and `dev/nginx-phpcoin-production.conf` (serve built app + wallet_api.php from disk). Hash mode allows prod to work without SPA fallback rules.
 

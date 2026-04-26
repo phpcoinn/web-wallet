@@ -224,9 +224,9 @@
                 </header>
     
                 <!-- ========== Left Sidebar Start ========== -->
-                <div class="vertical-menu">
+                <div class="vertical-menu d-flex flex-column sidebar-vertical-shell">
     
-                    <div data-simplebar class="h-100">
+                    <div data-simplebar class="sidebar-simplebar-scroll">
     
                         <!--- Sidemenu -->
                         <div id="sidebar-menu">
@@ -275,9 +275,24 @@
                                     </router-link>
                                 </li>
                                 <li>
-                                    <router-link to="/miner" active-class="active">
+                                    <!-- Match other items exactly (block <a>, no w-100 / d-flex) so Minia sm hover can set width: calc(190px + 70px). -->
+                                    <router-link
+                                        to="/miner"
+                                        active-class="active"
+                                        class="sidebar-miner-nav-link"
+                                        :class="{ 'sidebar-miner-link-mining-collapsed': minerRunning && sidebarCompact }"
+                                        :title="minerCollapsedMiningTitle"
+                                    >
                                         <i data-feather="zap"></i>
                                         <span>Miner</span>
+                                        <span
+                                            v-if="minerRunning && !sidebarCompact"
+                                            class="sidebar-miner-nav-badge ms-auto d-inline-flex align-items-center justify-content-center"
+                                            title="Mining active — open Miner for details"
+                                            aria-label="Mining active"
+                                        >
+                                            <span class="miner-nav-dot" aria-hidden="true" />
+                                        </span>
                                     </router-link>
                                 </li>
                                 <li v-if="!authStore.isQuickLogin">
@@ -295,6 +310,27 @@
                             </ul>
                         </div>
                         <!-- Sidebar -->
+                    </div>
+                    <div
+                        v-if="minerRunning && !sidebarCompact"
+                        class="sidebar-miner-foot flex-shrink-0 border-top px-3 py-3"
+                    >
+                        <router-link
+                            to="/miner"
+                            class="text-decoration-none d-block rounded px-2 py-2 bg-success-subtle"
+                        >
+                            <div class="text-uppercase text-muted small mb-1">Mining</div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="miner-nav-dot flex-shrink-0" aria-hidden="true" />
+                                <span class="text-success fw-semibold small">Active</span>
+                            </div>
+                            <div class="font-monospace small text-body text-break">
+                                {{ miningStat.speed || '0' }} H/s
+                                <template v-if="minerHeightLabel">
+                                    <span class="text-muted"> · {{ minerHeightLabel }}</span>
+                                </template>
+                            </div>
+                        </router-link>
                     </div>
                 </div>
                 <!-- Left Sidebar End -->
@@ -370,10 +406,12 @@
 </template>
 
 <script>
-import { onMounted, computed, ref, watch, nextTick } from 'vue'
+import { onMounted, onUnmounted, computed, ref, watch, nextTick } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useAccountsStore } from '../stores/accounts'
+import { useMinerStore } from '../stores/miner'
 import { api } from '../utils/api'
 import * as jdenticon from 'jdenticon'
 import Address from './Address.vue'
@@ -391,6 +429,30 @@ export default {
     const router = useRouter()
     const authStore = useAuthStore()
     const accountsStore = useAccountsStore()
+    const minerStore = useMinerStore()
+    const { minerRunning, miningStat, miner } = storeToRefs(minerStore)
+
+    const minerHeightLabel = computed(() => {
+      const h = miner.value?.height
+      if (h == null || h === '') return ''
+      return `height ${h}`
+    })
+
+    /** Theme (Minia/Skote) uses `body[data-sidebar-size="sm"]` for the narrow icon-only bar. */
+    const sidebarCompact = ref(false)
+
+    function syncSidebarCompact() {
+      if (typeof document === 'undefined') return
+      sidebarCompact.value = document.body.getAttribute('data-sidebar-size') === 'sm'
+    }
+
+    const minerCollapsedMiningTitle = computed(() => {
+      if (minerRunning.value && sidebarCompact.value) return 'Mining active — open Miner'
+      return undefined
+    })
+
+    let sidebarBodyObserver = null
+
     const showChangelog = ref(false)
     const searchQuery = ref('')
     const headerAvatarRef = ref(null)
@@ -488,6 +550,14 @@ export default {
       /^https?:\/\//i.test(commonBaseRaw) || commonBaseRaw.startsWith('/') ? commonBaseRaw : ''
 
     onMounted(() => {
+      syncSidebarCompact()
+      sidebarBodyObserver = new MutationObserver(syncSidebarCompact)
+      sidebarBodyObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['data-sidebar-size']
+      })
+      window.addEventListener('resize', syncSidebarCompact)
+
       // Close sidebar on navigation (e.g. when user clicks a sidebar link on mobile)
       router.afterEach(() => {
         document.body.classList.remove('sidebar-enable')
@@ -535,6 +605,21 @@ export default {
           window.feather.replace()
         }
         updateHeaderAvatar()
+        syncSidebarCompact()
+      })
+    })
+
+    onUnmounted(() => {
+      sidebarBodyObserver?.disconnect()
+      sidebarBodyObserver = null
+      window.removeEventListener('resize', syncSidebarCompact)
+    })
+
+    watch([minerRunning, sidebarCompact], () => {
+      nextTick(() => {
+        if (typeof window.feather !== 'undefined') {
+          window.feather.replace()
+        }
       })
     })
 
@@ -552,6 +637,11 @@ export default {
       showChangelog,
       CHAIN_ID,
       authStore,
+      minerRunning,
+      miningStat,
+      minerHeightLabel,
+      sidebarCompact,
+      minerCollapsedMiningTitle,
       displayAddress,
       headerBalance,
       handleLogout,
@@ -584,5 +674,116 @@ export default {
 
 .dropdown-menu-user .dropdown-item {
   min-width: 0;
+}
+
+.sidebar-miner-nav-badge {
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+/* Expanded sidebar: row flex so the pulse dot lines up with icon + label (float was misaligned). */
+body:not([data-sidebar-size='sm'])
+  #app
+  .vertical-menu
+  #sidebar-menu
+  .metismenu
+  > li
+  > a.sidebar-miner-nav-link {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+
+body:not([data-sidebar-size='sm'])
+  #app
+  .vertical-menu
+  #sidebar-menu
+  .metismenu
+  > li
+  > a.sidebar-miner-nav-link
+  > span:not(.sidebar-miner-nav-badge) {
+  min-width: 0;
+}
+
+.miner-nav-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bs-success, #198754);
+  box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.45);
+  animation: miner-sidebar-pulse 1.5s ease-out infinite;
+}
+
+@keyframes miner-sidebar-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  55% {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 6px rgba(25, 135, 84, 0);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.sidebar-miner-foot .router-link-active,
+.sidebar-miner-foot a {
+  outline: none;
+}
+
+/**
+ * Sidebar column: scroll area must shrink (flex 1 1 0 + min-height 0) so the mining
+ * footer stays inside the same viewport as the menu. Do not use h-100 on SimpleBar
+ * here — it consumes 100% of the column and pushes the footer off-screen.
+ */
+#app #layout-wrapper .vertical-menu.sidebar-vertical-shell {
+  min-height: 0;
+  overflow: hidden;
+}
+
+#app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* SimpleBar wraps content; let the chain fill the flex slot so scrolling stays inside */
+#app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll .simplebar-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll .simplebar-mask {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll .simplebar-offset {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#app .vertical-menu .sidebar-miner-foot {
+  max-width: 100%;
+}
+
+/*
+ * Collapsed + mining: keep green zap visible. Theme sm:hover sets svg fill + color;
+ * Feather uses stroke — wrong fill can hide the icon. Match :hover / .mm-active too.
+ */
+#app .vertical-menu #sidebar-menu .metismenu > li > a.sidebar-miner-link-mining-collapsed svg,
+#app .vertical-menu #sidebar-menu .metismenu > li:hover > a.sidebar-miner-link-mining-collapsed svg,
+#app .vertical-menu #sidebar-menu .metismenu > li.mm-active > a.sidebar-miner-link-mining-collapsed svg {
+  stroke: var(--bs-success, #198754) !important;
+  color: var(--bs-success, #198754) !important;
+  fill: none !important;
 }
 </style>

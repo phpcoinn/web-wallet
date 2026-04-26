@@ -32,7 +32,7 @@
               <h5 class="card-title mb-0">Masternodes</h5>
             </div>
             <div class="card-body">
-              <p class="text-muted small">Create a masternode by sending the required collateral to the masternode address. Cold masternode: use a reward address to receive rewards on a different address.</p>
+              <p class="text-muted">Create a masternode by sending the required collateral to the masternode address. <br/>Cold masternode: use a reward address to receive rewards on a different address.</p>
               <form @submit.prevent="submitCreate" class="row g-3 align-items-end">
                 <div class="col-md-4">
                   <label class="form-label">Masternode address</label>

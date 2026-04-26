@@ -1,8 +1,8 @@
 {
   "name": "phpcoin-wallet-electron",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "private": true,
-  "description": "Electron shell that loads the built PHP Coin web wallet from static files (../dist). Optional Vite dev URL via env.",
+  "description": "Electron shell that loads the wallet from https://wallet.phpcoin.net/ by default (single web source). Optional: bundled ../dist, Vite dev URL via env.",
   "homepage": "https://phpcoin.net",
   "author": {
     "name": "PHPCoin",
@@ -13,7 +13,8 @@
     "dev": "concurrently -k -n vite,electron -c blue,green \"npm --prefix .. run dev\" \"wait-on http-get://127.0.0.1:3001 && cross-env PHPCOIN_DEV_SERVER_URL=http://127.0.0.1:3001/ electron .\"",
     "build:wallet": "cross-env VITE_APP_BASE=./ npm --prefix .. run build",
     "start": "electron .",
-    "preview": "npm run build:wallet && npm run start",
+    "start:bundled": "cross-env PHPCOIN_USE_BUNDLED_WALLET=1 electron .",
+    "preview": "npm run build:wallet && npm run start:bundled",
     "dist:linux": "npm run build:wallet && electron-builder --linux AppImage deb",
     "dist:linux:x64": "npm run build:wallet && electron-builder --linux AppImage deb --x64",
     "dist:win": "npm run build:wallet && electron-builder --win nsis portable",

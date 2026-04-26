@@ -105,6 +105,15 @@
   transform: translateX(2px);
 }
 
+/*
+ * Collapsed sidebar (sm): theme uses li:hover > a { width: calc(190px + 70px); } for the flyout.
+ * Our translateX would fight that; Bootstrap w-100 on a link would override width — both removed on Miner.
+ */
+body[data-sidebar-size='sm'] #app .vertical-menu #sidebar-menu .metismenu > li > a:hover,
+body[data-sidebar-size='sm'] #app .vertical-menu #sidebar-menu .metismenu > li > a.active {
+  transform: none;
+}
+
 /* ——— Cards & panels ——— */
 #app .card:not([class*="bg-"]) {
   background-color: transparent;

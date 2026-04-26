@@ -3,7 +3,7 @@
 **Release:** **1.0.0** (initial published version; `package.json` → `APP_VERSION` in the footer).
 
 ## 1. Project Overview
-- **Type:** Vue 3 SPA web wallet
+- **Type:** Vue 3 SPA web wallet; optional **Electron** shell in **`electron/`** (desktop Linux/Windows builds; **CI:** `.github/workflows/build-desktop.yml` on `v*` tags)
 - **Language:** JavaScript (no TypeScript)
 - **Backend:** PHP node API + optional `wallet_api.php` (price, etc.); client focuses on signing and UX
 - **Styling:** Minia/Bootstrap shell from **`VITE_COMMON_ASSETS`** + Tailwind CSS 4 utilities/overrides in `src/assets/css/main.css` and `theme-modern.css`

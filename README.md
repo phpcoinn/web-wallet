@@ -2,7 +2,7 @@
 
 A Vue 3 SPA web wallet for managing PHP Coin accounts.
 
-**Initial release: `1.0.0`**, as defined in `package.json` (shown in the app footer as `APP_VERSION`).
+**Current version: `1.2.1`** (see `package.json`; shown in the app footer as `APP_VERSION`). For a full shipped-feature list, see **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**.
 
 ## Features
 
@@ -13,6 +13,10 @@ A Vue 3 SPA web wallet for managing PHP Coin accounts.
 - Wallet import/export
 - Dark theme with PHP Coin branding
 - **Telegram bot autologin** — signed `/autologin?request=…` links (see below)
+- Masternodes (create / remove), **Swap** on testnet (`VITE_CHAIN_ID=01`)
+- **PHPCoin Verifier** — open with signed `loginrequest` from the Dashboard
+- PWA (offline precache / install)
+- **Desktop (Electron):** optional native shell in **`electron/`** — Linux (**AppImage**, **deb**) and Windows (**NSIS**, **portable**) via **electron-builder**; local dev with `npm run electron:dev` (see [electron/README.md](electron/README.md)). **CI:** [`.github/workflows/build-desktop.yml`](.github/workflows/build-desktop.yml) builds **Windows & Linux x64** on `v*` tags (or manual run) and can publish a **GitHub Release** with attached installers.
 
 ## Telegram bot autologin
 
@@ -48,8 +52,8 @@ VITE_CHAIN_ID=00
 - **`VITE_APP_BASE`** — Must end with `/`. Build output and asset URLs use this (e.g. `/` for site root or `/apps/wallet3/` for a subpath). Vite default in `vite.config.js` is `/apps/wallet3/` if unset.
 - **`VITE_COMMON_ASSETS`** — Full `https://…` URL to the shared Minia theme (CSS/JS/fonts). **Required** for the Bootstrap/Minia shell (see [Asset optimization](#asset-optimization)).
 - **`VITE_MAIN_URL`** — Main host (no trailing slash). Node API: **`{VITE_MAIN_URL}/api.php`**; explorer: **`{VITE_MAIN_URL}/apps/explorer/`**.
-- **`VITE_WALLET_API_URL`** — Full URL to **`wallet_api.php`** (bundled from `public/` into `dist/`; used for price and health checks).
-- **`VITE_CHAIN_ID`** — Network id for signing (default **`00`** mainnet). Use **`01`** for testnet-only features such as Swap.
+- **`VITE_WALLET_API_URL`** — URL to **`wallet_api.php`** (used for price and health checks). Use a full `https://…` URL, or a same-origin path such as `/dapps.php?url=…/wallet_api.php` for dapps deploys.
+- **`VITE_CHAIN_ID`** — Network id for signing (default **`00`** mainnet). Use **`01`** for testnet-only features such as Swap. Testnet bundles (e.g. `npm run build_dapps_testnet`) set this via `.env.dapps.testnet` so the **Swap** menu appears in the sidebar.
 
 3. Run development server:
 ```bash
@@ -59,6 +63,12 @@ npm run dev
 4. Build for production:
 ```bash
 npm run build
+```
+
+5. Dapps builds (separate env files: **`.env.dapps`**, **`.env.dapps.testnet`**):
+```bash
+npm run build_dapps
+npm run build_dapps_testnet
 ```
 
 ## Asset optimization

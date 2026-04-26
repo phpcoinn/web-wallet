@@ -19,7 +19,7 @@ From **`electron/`**:
 npm run dev
 ```
 
-This starts **`npm run dev`** in the parent repo (Vite on **port 3000**) and waits until it responds, then launches Electron with **`PHPCOIN_DEV_SERVER_URL=http://127.0.0.1:3000/`** so you get **hot reload** while developing.
+This starts **`npm run dev`** in the parent repo (Vite default **port 3000** in `vite.config.js`) and waits until it responds, then launches Electron with **`PHPCOIN_DEV_SERVER_URL=http://127.0.0.1:3000/`** so you get **hot reload** while developing.
 
 From the **repository root** (shortcut):
 
@@ -61,6 +61,27 @@ npm start
 
 See `src/preload.js`. The **Mining speed** page can run a **Native (Node)** Argon2 benchmark via **`worker_threads`**. The **`argon2`** addon is rebuilt for Electron’s Node ABI on **`npm install`** (`postinstall`). If it fails to load, run **`npm run rebuild:native`** in this folder.
 
-## Packaging
+## Packaging (electron-builder)
 
-Installers not configured — add `electron-builder` when needed.
+From **`electron/`** after `npm install`:
+
+| Command | Output (under `electron/release/`) |
+|---------|-------------------------------------|
+| `npm run dist:linux` / `dist:linux:x64` | **AppImage** + **deb** (Linux `x64`) |
+| `npm run dist:win` / `dist:win:x64` | **NSIS** installer + **portable** `.exe` (Windows `x64`) |
+| `npm run pack` | Unpacked directory only (`--dir`) |
+
+Scripts run **`build:wallet`** first (`VITE_APP_BASE=./` + Vite build in `..`), then **electron-builder**. Bundled UI lives in `extraResources` as `../dist` → `dist` inside the app. **App id:** `net.phpcoin.wallet`, product name **PHPCoin Wallet** (`electron/package.json` `build` block).
+
+**Native Argon2:** `argon2` is rebuilt for Electron on `postinstall` (`electron-rebuild`). If mining benchmark fails, run `npm run rebuild:native` in `electron/`.
+
+## CI: GitHub Actions
+
+[`.github/workflows/build-desktop.yml`](../.github/workflows/build-desktop.yml) — **Windows x64** and **Linux x64** desktop builds, triggered by:
+
+- **Git tag** `v*` (e.g. `v2.0.3`), or  
+- **Manual** run (`workflow_dispatch`).
+
+Jobs upload artifacts (`*.exe`, `*.yml` for Windows; `*.AppImage`, `*.deb`, `*.yml` for Linux). If the ref is a **`v*`** tag, **publish-release** uses **softprops/action-gh-release** to attach all artifacts to a **GitHub Release** (with generated release notes).
+
+**Requirements:** `contents: write` for releases; for forks, ensure Actions permissions allow releases or use artifacts only.
