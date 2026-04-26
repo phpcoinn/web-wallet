@@ -224,7 +224,7 @@
                 </header>
     
                 <!-- ========== Left Sidebar Start ========== -->
-                <div class="vertical-menu d-flex flex-column sidebar-vertical-shell">
+                <div class="vertical-menu sidebar-vertical-shell">
     
                     <div data-simplebar class="sidebar-simplebar-scroll">
     
@@ -740,9 +740,18 @@ body:not([data-sidebar-size='sm'])
  * footer stays inside the same viewport as the menu. Do not use h-100 on SimpleBar
  * here — it consumes 100% of the column and pushes the footer off-screen.
  */
+/* No d-flex on this node: Bootstrap’s !important would override the theme’s
+   mobile `.vertical-menu { display: none }` and leave the drawer open on load. */
 #app #layout-wrapper .vertical-menu.sidebar-vertical-shell {
   min-height: 0;
   overflow: hidden;
+}
+
+@media (min-width: 993px) {
+  #app #layout-wrapper .vertical-menu.sidebar-vertical-shell {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 #app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll {
