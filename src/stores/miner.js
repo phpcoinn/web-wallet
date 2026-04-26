@@ -11,11 +11,6 @@ function electronApi() {
   return window.phpcoinElectron?.isElectron ? window.phpcoinElectron : null
 }
 
-/** Desktop shell: workers survive leaving the Miner route until Stop or account change. */
-export function isElectronMinerShell() {
-  return !!electronApi()
-}
-
 export const useMinerStore = defineStore('miner', () => {
   const authStore = useAuthStore()
 
@@ -416,28 +411,10 @@ export const useMinerStore = defineStore('miner', () => {
   }
 
   /**
-   * Call from Miner.vue on unmount. Browser: stop workers immediately (same as old page teardown).
-   * Electron: keep mining until Stop or account change.
+   * Call from Miner.vue on unmount. Intentionally a no-op: workers live in this store so
+   * mining continues after navigation (web WASM and Electron) until Stop or account change.
    */
-  function onMinerPageLeave() {
-    if (isElectronMinerShell()) return
-    if (pendingStopCleanup) {
-      clearTimeout(pendingStopCleanup)
-      pendingStopCleanup = null
-    }
-    for (const w of workers) {
-      try {
-        w.postMessage({ type: 'stop' })
-      } catch (_) {}
-    }
-    terminateWorkers()
-    workerSnapshots.value = {}
-    minerRunning.value = false
-    minerData.value = emptyMergedMiner()
-    sessionAccepted.value = 0
-    sessionRejected.value = 0
-    sessionDropped.value = 0
-  }
+  function onMinerPageLeave() {}
 
   return {
     miningUrlInput,
