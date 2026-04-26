@@ -14,7 +14,7 @@ A Vue 3 SPA web wallet for managing PHP Coin accounts.
 - Dark theme with PHP Coin branding
 - **Telegram bot autologin** — signed `/autologin?request=…` links (see below)
 - Masternodes (create / remove), **Swap** on testnet (`VITE_CHAIN_ID=01`)
-- **PHPCoin Verifier** — open with signed `loginrequest` from the Dashboard
+- **PHPCoin Verifier** — verify in-wallet (AJAX + modal) or open the dapp with signed `loginrequest` from the Dashboard / Miner
 - PWA (offline precache / install)
 - **Desktop (Electron):** optional native shell in **`electron/`** — Linux (**AppImage**, **deb**) and Windows (**NSIS**, **portable**) via **electron-builder**; local dev with `npm run electron:dev` (see [electron/README.md](electron/README.md)). **CI:** [`.github/workflows/build-desktop.yml`](.github/workflows/build-desktop.yml) builds **Windows & Linux x64** on `v*` tags (or manual run) and can publish a **GitHub Release** with attached installers.
 
@@ -54,6 +54,7 @@ VITE_CHAIN_ID=00
 - **`VITE_MAIN_URL`** — Main host (no trailing slash). Node API: **`{VITE_MAIN_URL}/api.php`**; explorer: **`{VITE_MAIN_URL}/apps/explorer/`**.
 - **`VITE_WALLET_API_URL`** — URL to **`wallet_api.php`** (used for price and health checks). Use a full `https://…` URL, or a same-origin path such as `/dapps.php?url=…/wallet_api.php` for dapps deploys.
 - **`VITE_CHAIN_ID`** — Network id for signing (default **`00`** mainnet). Use **`01`** for testnet-only features such as Swap. Testnet bundles (e.g. `npm run build_dapps_testnet`) set this via `.env.dapps.testnet` so the **Swap** menu appears in the sidebar.
+- **`VITE_VERIFIER_ADDRESS`** — Payout address for in-wallet address verification (must match the verifier dapp’s `config.php` on that network). **`wallet_api.php`** proxies `q=verify` and uses **`WALLET_VERIFIER_PAYOUT_ADDRESS`** (or env **`WALLET_VERIFIER_PAYOUT_ADDRESS`**) for the send-back authorize response — keep PHP and Vite values aligned when you deploy.
 
 3. Run development server:
 ```bash

@@ -152,6 +152,109 @@ function wallet_price_history_update($path, $now, $price) {
 
 $q = $_GET['q'] ?? '';
 
+/** Node origin for api.php (authenticate, etc.). Override via WALLET_NODE_MAIN if wallet_api is not on the same infra. */
+if (!defined('WALLET_NODE_MAIN')) {
+    define('WALLET_NODE_MAIN', getenv('WALLET_NODE_MAIN') ?: 'https://main1.phpcoin.net');
+}
+/** Verifier dapp `api.php` path under dapps.php ?url= */
+if (!defined('WALLET_VERIFIER_API_DAPP_PATH')) {
+    define('WALLET_VERIFIER_API_DAPP_PATH', getenv('WALLET_VERIFIER_API_DAPP_PATH') ?: 'PeC85pqFgRxmevonG6diUwT4AfF7YUPSm3/verifier/api.php');
+}
+/** Payout address shown after authorize; should match VITE_VERIFIER_ADDRESS in the SPA. */
+if (!defined('WALLET_VERIFIER_PAYOUT_ADDRESS')) {
+    define('WALLET_VERIFIER_PAYOUT_ADDRESS', getenv('WALLET_VERIFIER_PAYOUT_ADDRESS') ?: 'PdGDUs3Hc6F2CtRnmM4cz1iwuAqfD8hpRE');
+}
+
+/**
+ * Proxy GET to verifier dapp api.php?q=verify (no redirect) so the browser avoids cross-origin dapps.php.
+ */
+if ($q === 'verifierRequestFunds') {
+    $address = isset($_GET['address']) ? trim((string) $_GET['address']) : '';
+    if ($address === '' || strlen($address) < 10) {
+        echo json_encode(['status' => 'error', 'error' => 'Invalid address']);
+        exit;
+    }
+    $path = WALLET_VERIFIER_API_DAPP_PATH;
+    $url = WALLET_NODE_MAIN . '/dapps.php?url=' . rawurlencode($path) . '&q=verify&address=' . rawurlencode($address);
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 25,
+            'ignore_errors' => true,
+        ],
+    ]);
+    $raw = @file_get_contents($url, false, $ctx);
+    if ($raw === false || $raw === '') {
+        http_response_code(502);
+        echo json_encode(['status' => 'error', 'error' => 'Verifier request failed']);
+        exit;
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    echo $raw;
+    exit;
+}
+
+/** One-time nonce for wallet-only "send back" authorization (forwarded to node authenticate). */
+if ($q === 'verifierSendBackChallenge') {
+    $nonce = 'wb-verifier-sendback-' . bin2hex(random_bytes(16));
+    echo json_encode(['status' => 'ok', 'data' => ['nonce' => $nonce]]);
+    exit;
+}
+
+/**
+ * POST JSON { public_key, signature, nonce } — forwards to node authenticate; on success returns verifier payout address.
+ */
+if ($q === 'verifierSendBackAuthorize') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'error', 'error' => 'POST required']);
+        exit;
+    }
+    $input = json_decode((string) file_get_contents('php://input'), true);
+    if (!is_array($input)) {
+        $input = [];
+    }
+    $pk = isset($input['public_key']) ? trim((string) $input['public_key']) : '';
+    $sig = isset($input['signature']) ? trim((string) $input['signature']) : '';
+    $nonce = isset($input['nonce']) ? (string) $input['nonce'] : '';
+    if ($pk === '' || $sig === '' || $nonce === '') {
+        echo json_encode(['status' => 'error', 'error' => 'Missing public_key, signature, or nonce']);
+        exit;
+    }
+    $base = WALLET_NODE_MAIN . '/api.php';
+    $sep = strpos($base, '?') !== false ? '&' : '?';
+    $authUrl = $base . $sep . http_build_query([
+        'q' => 'authenticate',
+        'public_key' => $pk,
+        'signature' => $sig,
+        'nonce' => $nonce,
+    ]);
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 15,
+            'ignore_errors' => true,
+        ],
+    ]);
+    $raw = @file_get_contents($authUrl, false, $ctx);
+    if ($raw === false || $raw === '') {
+        http_response_code(502);
+        echo json_encode(['status' => 'error', 'error' => 'Node authenticate failed']);
+        exit;
+    }
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded) || ($decoded['status'] ?? '') !== 'ok') {
+        $err = is_array($decoded) ? ($decoded['error'] ?? $decoded['message'] ?? 'Unauthorized') : 'Unauthorized';
+        echo json_encode(['status' => 'error', 'error' => (string) $err]);
+        exit;
+    }
+    echo json_encode([
+        'status' => 'ok',
+        'data' => [
+            'verifierAddress' => WALLET_VERIFIER_PAYOUT_ADDRESS,
+        ],
+    ]);
+    exit;
+}
+
 // Test endpoint – call from frontend to verify wallet_api.php is reachable
 if ($q === 'test') {
     echo json_encode([

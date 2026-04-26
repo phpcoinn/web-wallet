@@ -169,9 +169,9 @@
                         <i :class="copiedField === 'address' ? 'bx bx-check text-success' : 'bx bx-copy-alt'"></i>
                       </button>
                     </div>
-                    <div v-if="addressVerified === false" class="alert alert-warning mt-2 mb-0 py-2 px-3 font-size-13 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div v-if="addressVerified === false" class="alert alert-warning mt-2 mb-0 py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                       <span><i class="bx bx-error-circle me-1"></i>Your account is not verified – so you cannot use it for mining.</span>
-                      <button type="button" class="btn btn-warning btn-sm" @click="openVerifierLogin">Verify</button>
+                      <button type="button" class="btn btn-warning btn-sm" @click="openVerifierWallet">Verify</button>
                     </div>
                   </div>
                   <div class="mb-3">
@@ -295,6 +295,11 @@
       action-label="Enter your password to open the verifier with a signed login request."
       @confirm="onVerifierPasswordConfirmed"
     />
+    <VerifierModal
+      v-model="showVerifierModal"
+      @verified="onVerifierInWalletSuccess"
+      @open-external="openVerifierExternal"
+    />
   </div>
 </template>
 
@@ -307,6 +312,7 @@ import { getPublicKey } from '../utils/wallet'
 import { buildVerifierLoginUrl } from '../utils/verifierLogin'
 import QRCode from 'qrcode'
 import PasswordConfirmModal from '../components/PasswordConfirmModal.vue'
+import VerifierModal from '../components/VerifierModal.vue'
 import Address from '../components/Address.vue'
 import { api } from '../utils/api'
 import { toast } from '../utils/toast'
@@ -403,7 +409,7 @@ function initSparklineChart(el, seriesData, options = {}, layoutAttempt = 0) {
 
 export default {
   name: 'Dashboard',
-  components: { Address, PasswordConfirmModal },
+  components: { Address, PasswordConfirmModal, VerifierModal },
   setup() {
     function hasDebugFlag(name) {
       if (typeof window === 'undefined') return false
@@ -438,6 +444,7 @@ export default {
     const accountsStore = useAccountsStore()
     const showRevealPasswordModal = ref(false)
     const showVerifierPasswordModal = ref(false)
+    const showVerifierModal = ref(false)
     const revealedPrivateKey = ref('')
     const privateKeyRevealed = ref(false)
     const copiedField = ref('')
@@ -892,7 +899,15 @@ export default {
       }
     }
 
-    function openVerifierLogin() {
+    function openVerifierWallet() {
+      if (!activeAccount.value) {
+        toast.error('No active account')
+        return
+      }
+      showVerifierModal.value = true
+    }
+
+    function openVerifierExternal() {
       if (authStore.isQuickLogin) {
         const pk = authStore.masterKey
         if (!pk) {
@@ -917,6 +932,10 @@ export default {
       } catch (e) {
         toast.error('Failed to decrypt private key')
       }
+    }
+
+    async function onVerifierInWalletSuccess() {
+      await checkAddressVerification()
     }
 
     const isSent = (row) => {
@@ -1130,10 +1149,13 @@ export default {
       addressVerified,
       showRevealPasswordModal,
       showVerifierPasswordModal,
+      showVerifierModal,
       requestRevealPrivateKey,
       onRevealPasswordConfirmed,
-      openVerifierLogin,
+      openVerifierWallet,
+      openVerifierExternal,
       onVerifierPasswordConfirmed,
+      onVerifierInWalletSuccess,
       isSent,
       getCounterpartyAddress,
       formatAmount,

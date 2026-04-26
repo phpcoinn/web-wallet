@@ -215,6 +215,47 @@ export const api = {
   },
 
   /**
+   * Proxy to verifier dapp `api.php?q=verify` (no redirect) via wallet_api.php — avoids browser CORS to dapps.php.
+   * @param {string} address - User address to receive the verifier test amount
+   * @returns {Promise<object>} Raw JSON from verifier / node (shape varies)
+   */
+  async verifierRequestFunds(address) {
+    const queryParams = new URLSearchParams({ q: 'verifierRequestFunds', address })
+    const url = `${WALLET_API_URL}${querySep(WALLET_API_URL)}${queryParams.toString()}`
+    const response = await fetch(url, { headers: { Accept: 'application/json' } })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(result.error || result.message || `Verifier request failed (${response.status})`)
+    }
+    return result
+  },
+
+  /** Nonce for wallet-only send-back flow (signed then verified via verifierSendBackAuthorize). */
+  async verifierSendBackChallenge() {
+    return callApi(WALLET_API_URL, 'verifierSendBackChallenge', {})
+  },
+
+  /**
+   * Confirms the client holds the private key for public_key (forwards to node authenticate).
+   * @returns {Promise<{ verifierAddress: string }>}
+   */
+  async verifierSendBackAuthorize(payload) {
+    const response = await fetch(
+      `${WALLET_API_URL}${querySep(WALLET_API_URL)}q=verifierSendBackAuthorize`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }
+    )
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || result.status === 'error') {
+      throw new Error(result.error || result.message || 'Send-back authorize failed')
+    }
+    return result.data ?? result
+  },
+
+  /**
    * Get address info (masternode type: no_masternode, cold_masternode, hot_masternode, masternode_reward)
    * @param {string} address
    * @returns {Promise<{type: string, masternodes: Array, cold_masternode_enabled: boolean}>}

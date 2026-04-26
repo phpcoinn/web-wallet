@@ -47,7 +47,7 @@
             <template v-if="!verifiedAddress && !checkingVerify">
               <div class="alert alert-warning mb-0 py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <span><i class="bx bx-error-circle me-1"></i>Your account is not verified – so you cannot use it for mining.</span>
-                <button type="button" class="btn btn-warning btn-sm" @click="openVerifierLogin">Verify</button>
+                <button type="button" class="btn btn-warning btn-sm" @click="openVerifierWallet">Verify</button>
               </div>
             </template>
 
@@ -181,6 +181,11 @@
       action-label="Enter your password to open the verifier with a signed login request."
       @confirm="onVerifierPasswordConfirmed"
     />
+    <VerifierModal
+      v-model="showVerifierModal"
+      @verified="onVerifierInWalletSuccess"
+      @open-external="openVerifierExternal"
+    />
   </div>
 </template>
 
@@ -192,6 +197,7 @@ import { useAccountsStore } from '../stores/accounts'
 import { buildVerifierLoginUrl } from '../utils/verifierLogin'
 import { toast } from '../utils/toast'
 import PasswordConfirmModal from '../components/PasswordConfirmModal.vue'
+import VerifierModal from '../components/VerifierModal.vue'
 import { useMinerStore } from '../stores/miner'
 
 const minerStore = useMinerStore()
@@ -223,6 +229,7 @@ const { startMiner, stopMiner, clearLogs, checkVerified, onCpuInput, logClass, a
 const authStore = useAuthStore()
 const accountsStore = useAccountsStore()
 const showVerifierPasswordModal = ref(false)
+const showVerifierModal = ref(false)
 
 function openVerifierInNewTab(privateKey) {
   try {
@@ -234,7 +241,15 @@ function openVerifierInNewTab(privateKey) {
   }
 }
 
-function openVerifierLogin() {
+function openVerifierWallet() {
+  if (!authStore.activeAccount) {
+    toast.error('No active account')
+    return
+  }
+  showVerifierModal.value = true
+}
+
+function openVerifierExternal() {
   if (authStore.isQuickLogin) {
     const pk = authStore.masterKey
     if (!pk) {
@@ -259,6 +274,10 @@ function onVerifierPasswordConfirmed(masterKey) {
   } catch (e) {
     toast.error('Failed to decrypt private key')
   }
+}
+
+function onVerifierInWalletSuccess() {
+  void checkVerified()
 }
 
 onMounted(() => {
