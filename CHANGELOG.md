@@ -5,6 +5,14 @@ Version numbers match the app (see the footer).
 
 ## [Unreleased]
 
+## [2.0.4] — 2026-04-29
+
+- **Version 2.0.4** for the web wallet and **`electron/`** (footer and desktop builds stay aligned).
+- **Legacy dapps login bridge:** wallet can complete `sessionlogin` by posting the authenticated account to **`wallet_api.php`**, which returns a redirect URL with `auth_data` expected by dapp `top.php`.
+- **Legacy session sync:** on account switch, wallet updates legacy localStorage key **`privateKey`** and syncs PHP session account via **`sessionSetAccount`**.
+- **Logout flow:** new **`#/logout`** screen shows “Logging out…” while clearing wallet + PHP session; supports `?redirect=` and correctly treats **`/apps/...`** and **`/dapps.php?...`** as full-page redirects.
+- **Local env hygiene:** `.env.dapps`, `.env.dapps.testnet`, and `.env.testnet` are now ignored in git.
+
 ## [2.0.3] — 2026-04-27
 
 - **Version 2.0.3** for the web wallet and **`electron/`** (footer and desktop builds stay aligned).

@@ -20,10 +20,23 @@ import { clearPendingAuthRedirect } from '../utils/authRedirect'
 
 function normalizeRedirect(route) {
   const raw = Array.isArray(route.query.redirect) ? route.query.redirect[0] : route.query.redirect
-  const redirect = typeof raw === 'string' ? raw.trim() : ''
+  let redirect = typeof raw === 'string' ? raw.trim() : ''
+  // Some callers pass nested-encoded values (%2Fdapps.php%3Furl=...).
+  // Decode a couple of times to normalize before classification.
+  for (let i = 0; i < 2; i++) {
+    if (!redirect.includes('%')) break
+    try {
+      const dec = decodeURIComponent(redirect)
+      if (!dec || dec === redirect) break
+      redirect = dec.trim()
+    } catch {
+      break
+    }
+  }
   if (!redirect) return null
   if (/^https?:\/\//i.test(redirect)) return { type: 'external', value: redirect }
   if (redirect.startsWith('/apps/')) return { type: 'external', value: redirect }
+  if (redirect.startsWith('/dapps.php')) return { type: 'external', value: redirect }
   if (redirect.startsWith('/')) return { type: 'internal', value: redirect }
   return null
 }

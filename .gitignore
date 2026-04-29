@@ -30,3 +30,8 @@ theme/
 *.sln
 *.sw?
 
+# Local environment overrides (do not commit)
+.env.dapps
+.env.dapps.testnet
+.env.testnet
+
