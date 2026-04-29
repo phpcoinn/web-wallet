@@ -745,7 +745,10 @@ export default {
           localStorage.removeItem(PASSWORD_STORAGE_KEY)
         }
         
-        navigateAfterAuth(router)
+        await navigateAfterAuth(router, {
+          address: accountsStore.accounts[0]?.address || authStore.activeAccount?.address || '',
+          publicKey: accountsStore.accounts[0]?.publicKey || authStore.activeAccount?.publicKey || ''
+        })
       } catch (error) {
         console.error('Login error:', error)
         toast.error(error.message || 'Login failed')
@@ -808,7 +811,11 @@ export default {
           clearStoredLegacyPrivateKey()
         }
 
-        navigateAfterAuth(router)
+        await navigateAfterAuth(router, {
+          address,
+          publicKey: publicKey || '',
+          privateKey
+        })
       } catch (error) {
         console.error('Private key login error:', error)
         toast.error(error.message || 'Invalid private key or authentication failed')
@@ -844,7 +851,11 @@ export default {
         authStore.setActiveAccount(account)
         
         toast.success(`Account created! Address: ${address.substring(0, 10)}...`)
-        navigateAfterAuth(router)
+        await navigateAfterAuth(router, {
+          address,
+          publicKey: publicKey || '',
+          privateKey
+        })
       } catch (error) {
         console.error('Fast login error:', error)
         toast.error(error.message || 'Failed to create account')
@@ -938,7 +949,10 @@ export default {
           accountsStore.accounts[accountsStore.accounts.length - 1]
         authStore.setActiveAccount(addedAccount)
         toast.success(isSetup.value ? 'Wallet created successfully' : 'Account added successfully')
-        navigateAfterAuth(router)
+        await navigateAfterAuth(router, {
+          address: account.address,
+          publicKey: account.publicKey || ''
+        })
       } catch (error) {
         console.error('Add account error:', error)
         toast.error(error.message || 'Failed to add account')

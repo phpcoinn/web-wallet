@@ -255,6 +255,26 @@ export const api = {
     return result.data ?? result
   },
 
+  /** Update legacy dapps PHP session account after wallet account switch. */
+  async sessionSetAccount(account) {
+    const body = new URLSearchParams()
+    body.set('address', account?.address ? String(account.address) : '')
+    body.set('public_key', account?.public_key || account?.publicKey || '')
+    const response = await fetch(
+      `${WALLET_API_URL}${querySep(WALLET_API_URL)}q=sessionSetAccount`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: body.toString()
+      }
+    )
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || result.status === 'error') {
+      throw new Error(result.error || result.message || 'Could not update session account')
+    }
+    return result.data ?? result
+  },
+
   /**
    * Get address info (masternode type: no_masternode, cold_masternode, hot_masternode, masternode_reward)
    * @param {string} address

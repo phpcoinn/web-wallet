@@ -413,6 +413,7 @@ import { useAuthStore } from '../stores/auth'
 import { useAccountsStore } from '../stores/accounts'
 import { useMinerStore } from '../stores/miner'
 import { api } from '../utils/api'
+import { setStoredLegacyPrivateKey } from '../utils/legacyLoginStorage'
 import * as jdenticon from 'jdenticon'
 import Address from './Address.vue'
 import { assetUrl, ASSETS_BASE } from '@/utils/assets'
@@ -525,6 +526,25 @@ export default {
       }
     }
 
+    function syncLegacyBridgeForAccount(account) {
+      if (!account?.address) return
+      try {
+        if (authStore.isQuickLogin) {
+          const pk = authStore.masterKey || account.privateKey
+          if (pk) setStoredLegacyPrivateKey(pk)
+        } else if (authStore.masterKey) {
+          const pk = accountsStore.getDecryptedPrivateKey(account, authStore.masterKey)
+          if (pk) setStoredLegacyPrivateKey(pk)
+        }
+      } catch (_) {}
+      api
+        .sessionSetAccount({
+          address: account.address || '',
+          public_key: account.publicKey || ''
+        })
+        .catch(() => {})
+    }
+
     async function loadHeaderBalance() {
       const address = authStore.activeAccount?.address
       if (!address) {
@@ -541,8 +561,7 @@ export default {
     }
 
     function handleLogout() {
-      authStore.logout()
-      router.push({ name: 'Login' })
+      router.push({ name: 'Logout' })
     }
 
     const commonBaseRaw = (import.meta.env.VITE_COMMON_ASSETS || '').trim()
@@ -626,6 +645,7 @@ export default {
     watch(() => authStore.activeAccount, () => {
       updateHeaderAvatar()
       loadHeaderBalance()
+      syncLegacyBridgeForAccount(authStore.activeAccount)
     }, { immediate: true })
 
     watch(() => accountsStore.accounts, () => {

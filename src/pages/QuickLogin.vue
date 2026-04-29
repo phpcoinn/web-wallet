@@ -228,7 +228,11 @@ export default {
         authStore.login(privateKey, true)
         authStore.setActiveAccount(account)
 
-        navigateAfterAuth(router)
+        await navigateAfterAuth(router, {
+          address: account.address,
+          publicKey: account.publicKey || '',
+          privateKey: account.privateKey || ''
+        })
       } catch (error) {
         console.error('Quick login error:', error)
         toast.error(error.message || 'Invalid private key or authentication failed')

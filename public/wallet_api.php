@@ -255,6 +255,133 @@ if ($q === 'verifierSendBackAuthorize') {
     exit;
 }
 
+/**
+ * Legacy dapps bridge:
+ * - wallet authenticates user in SPA
+ * - wallet posts account + redirect here
+ * - this endpoint attaches auth_data (including current session request_code)
+ *   so dapp top.php can decode it and set $_SESSION['account'].
+ */
+if ($q === 'sessionLoginComplete') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'error', 'error' => 'POST required']);
+        exit;
+    }
+    $input = $_POST;
+    if (!is_array($input) || count($input) === 0) {
+        $input = json_decode((string) file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = [];
+        }
+    }
+
+    $redirect = isset($input['redirect']) ? trim((string) $input['redirect']) : '';
+
+    $account = isset($input['account']) && is_array($input['account']) ? $input['account'] : [];
+    $address = isset($input['address']) ? trim((string) $input['address']) : '';
+    if ($address === '' && isset($account['address'])) {
+        $address = trim((string) $account['address']);
+    }
+
+    $publicKey = isset($input['public_key'])
+        ? trim((string) $input['public_key'])
+        : (isset($input['publicKey']) ? trim((string) $input['publicKey']) : '');
+    if ($publicKey === '' && is_array($account)) {
+        $publicKey = isset($account['public_key'])
+            ? trim((string) $account['public_key'])
+            : (isset($account['publicKey']) ? trim((string) $account['publicKey']) : '');
+    }
+
+    if ($redirect === '' && isset($_GET['redirect'])) {
+        $redirect = trim((string) $_GET['redirect']);
+    }
+    if ($address === '' && isset($_GET['address'])) {
+        $address = trim((string) $_GET['address']);
+    }
+    if ($publicKey === '' && isset($_GET['public_key'])) {
+        $publicKey = trim((string) $_GET['public_key']);
+    }
+
+    if ($redirect === '' || $address === '') {
+        echo json_encode(['status' => 'error', 'error' => 'Missing redirect or account.address']);
+        exit;
+    }
+
+    $requestCode = isset($_SESSION['request_code']) ? (string) $_SESSION['request_code'] : '';
+    if ($requestCode === '') {
+        echo json_encode([
+            'status' => 'error',
+            'error' => 'Missing request_code in session. Start login from the dapp top_login flow.'
+        ]);
+        exit;
+    }
+
+    $authData = [
+        'account' => [
+            'address' => $address,
+            'public_key' => $publicKey,
+        ],
+        'redirect' => $redirect,
+        'request_code' => $requestCode,
+    ];
+
+    $parts = parse_url($redirect);
+    $queryParams = [];
+    if (isset($parts['query'])) {
+        parse_str($parts['query'], $queryParams);
+    }
+    $queryParams['auth_data'] = base64_encode(json_encode($authData));
+    $newQuery = http_build_query($queryParams);
+    $redirectUrl =
+        (isset($parts['scheme']) ? $parts['scheme'] . '://' : '') .
+        (isset($parts['host']) ? $parts['host'] : '') .
+        (isset($parts['port']) ? ':' . $parts['port'] : '') .
+        (isset($parts['path']) ? $parts['path'] : '') .
+        ($newQuery !== '' ? '?' . $newQuery : '') .
+        (isset($parts['fragment']) ? '#' . $parts['fragment'] : '');
+
+    echo json_encode([
+        'status' => 'ok',
+        'data' => [
+            'redirect_url' => $redirectUrl,
+            'request_code' => $requestCode,
+        ],
+    ]);
+    exit;
+}
+
+/** Clear legacy bridge session keys used by sessionlogin flow. */
+if ($q === 'sessionLogoutClear') {
+    unset($_SESSION['request_code']);
+    unset($_SESSION['account']);
+    @session_destroy();
+    echo json_encode([
+        'status' => 'ok',
+        'data' => ['cleared' => true],
+    ]);
+    exit;
+}
+
+/** Set legacy dapps session account to currently active wallet account. */
+if ($q === 'sessionSetAccount') {
+    $address = isset($_POST['address']) ? trim((string) $_POST['address']) : '';
+    $publicKey = isset($_POST['public_key']) ? trim((string) $_POST['public_key']) : '';
+    if ($address === '') {
+        echo json_encode(['status' => 'error', 'error' => 'Missing address']);
+        exit;
+    }
+    $_SESSION['account'] = [
+        'address' => $address,
+        'public_key' => $publicKey,
+    ];
+    echo json_encode([
+        'status' => 'ok',
+        'data' => ['address' => $address],
+    ]);
+    exit;
+}
+
 // Test endpoint – call from frontend to verify wallet_api.php is reachable
 if ($q === 'test') {
     echo json_encode([

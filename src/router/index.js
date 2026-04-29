@@ -29,6 +29,12 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/logout',
+    name: 'Logout',
+    component: () => import('../pages/Logout.vue'),
+    meta: { requiresAuth: false, authLayout: false }
+  },
+  {
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../pages/Dashboard.vue'),

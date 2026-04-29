@@ -6,6 +6,11 @@ import { getAddress, getPublicKey } from '../utils/wallet'
 const QUICK_LOGIN_STORAGE_KEY = 'phpcoin_quick_login'
 const QUICK_LOGIN_ACCOUNT_KEY = 'phpcoin_quick_account'
 const PASSWORD_SESSION_KEY = 'phpcoin_password_session'
+const WALLET_API_URL = import.meta.env.VITE_WALLET_API_URL || '/wallet_api.php'
+
+function querySep(baseUrl) {
+  return String(baseUrl).includes('?') ? '&' : '?'
+}
 
 /** Persisted decrypted private key after autologin (localStorage; survives tab close). */
 export const AUTOLOGIN_PK_KEY = 'phpcoin_autologin_private_key'
@@ -199,6 +204,13 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStorage.removeItem(PASSWORD_SESSION_KEY)
     clearAutologinSessionFlag()
     clearPersistedAutologinPk()
+
+    // Also clear legacy dapps bridge session keys (request_code/account) used by sessionlogin.
+    fetch(`${WALLET_API_URL}${querySep(WALLET_API_URL)}q=sessionLogoutClear`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: ''
+    }).catch(() => {})
   }
 
   const setActiveAccount = (account) => {
