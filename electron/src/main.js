@@ -16,6 +16,9 @@ const remoteWalletUrl =
   (process.env.PHPCOIN_WALLET_URL && process.env.PHPCOIN_WALLET_URL.trim()) ||
   'https://wallet.phpcoin.net/'
 
+/** Keep in sync with web-wallet/src/constants/swap.js (`SWAP_ENABLED`). */
+const SWAP_ENABLED = false
+
 function normalizeLoadUrl(url) {
   const u = url.trim()
   return u.endsWith('/') ? u : `${u}/`
@@ -135,12 +138,16 @@ function createApplicationMenu() {
           accelerator: 'CmdOrCtrl+8',
           click: () => navigateWallet('#/accounts')
         },
-        { type: 'separator' },
-        {
-          label: 'Swap (testnet)',
-          accelerator: 'CmdOrCtrl+9',
-          click: () => navigateWallet('#/swap')
-        }
+        ...(SWAP_ENABLED
+          ? [
+              { type: 'separator' },
+              {
+                label: 'Swap (testnet)',
+                accelerator: 'CmdOrCtrl+9',
+                click: () => navigateWallet('#/swap')
+              }
+            ]
+          : [])
       ]
     },
     {

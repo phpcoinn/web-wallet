@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useAccountsStore } from '../stores/accounts'
 import { CHAIN_ID } from '../utils/wallet'
+import { SWAP_ENABLED } from '../constants/swap'
 import { setPendingAuthRedirect, clearPendingAuthRedirect } from '../utils/authRedirect'
 import { requestAuthSetupFlow } from '../utils/authEntryIntent'
 
@@ -126,6 +127,10 @@ router.beforeEach(async (to, from, next) => {
     return
   }
   if (to.meta.testnetOnly && CHAIN_ID !== '01') {
+    next({ name: 'Dashboard' })
+    return
+  }
+  if (to.name === 'Swap' && !SWAP_ENABLED) {
     next({ name: 'Dashboard' })
     return
   }

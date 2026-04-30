@@ -244,7 +244,7 @@
                                         <span>Send</span>
                                     </router-link>
                                 </li>
-                                <li v-if="CHAIN_ID === '01'">
+                                <li v-if="CHAIN_ID === '01' && SWAP_ENABLED">
                                     <router-link to="/swap" active-class="active">
                                         <i data-feather="refresh-cw"></i>
                                         <span>Swap</span>
@@ -418,6 +418,7 @@ import * as jdenticon from 'jdenticon'
 import Address from './Address.vue'
 import { assetUrl, ASSETS_BASE } from '@/utils/assets'
 import { CHAIN_ID } from '../utils/wallet'
+import { SWAP_ENABLED } from '../constants/swap'
 import { APP_VERSION } from '../constants/appMeta'
 import ChangelogModal from './ChangelogModal.vue'
 
@@ -656,6 +657,7 @@ export default {
       appVersion: APP_VERSION,
       showChangelog,
       CHAIN_ID,
+      SWAP_ENABLED,
       authStore,
       minerRunning,
       miningStat,
