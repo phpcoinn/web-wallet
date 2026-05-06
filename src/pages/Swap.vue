@@ -14,9 +14,119 @@
       </div>
     </div>
 
-    <p class="text-muted font-size-13 mb-0">
-      Testnet only: send PHP to the bridge to swap to mainnet. Optional receiver address is stored in the transaction message.
-    </p>
+    <div class="row mt-3">
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Swap procedure (testnet → mainnet)</h5>
+            <ol class="text-muted mb-4 ps-3">
+              <li class="mb-2">
+                Swaps use the <strong class="text-body">Swap v2</strong> bridge. Minimum send is
+                <strong class="text-body">{{ SWAP_MIN_AMOUNT }} PHP</strong> per transaction.
+              </li>
+              <li class="mb-2">
+                Choose <strong class="text-body">Send swap transaction</strong> below. Optionally enter your
+                <strong class="text-body">mainnet receiver</strong> — it is stored in the transaction message so the service knows where to credit mainnet PHP.
+              </li>
+              <li class="mb-2">
+                After the deposit confirms on testnet, processing continues automatically on the bridge side. Timing depends on confirmations and queue load.
+              </li>
+              <li class="mb-0">
+                Use <strong class="text-body">Swap v2 history</strong> to look up deposit status and outcomes for your sends.
+              </li>
+            </ol>
+
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              <a
+                :href="SWAP_V2_HISTORY_URL"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1"
+              >
+                <ExternalLink :size="16" aria-hidden="true" />
+                Open Swap v2 history
+              </a>
+            </div>
+
+            <div class="border rounded p-3 bg-light mb-0">
+              <div class="text-muted mb-1">Bridge deposit address (testnet)</div>
+              <code class="font-monospace text-break d-block user-select-all">{{ SWAP_BRIDGE_ADDRESS }}</code>
+              <div v-if="activeAccount?.address" class="text-muted mt-3 mb-0">
+                Wallet balance: <span class="text-body fw-medium">{{ balance }} PHP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <button type="button" class="btn btn-primary" @click="openSwapModal">
+            <SendIcon :size="18" class="me-1 align-text-bottom" aria-hidden="true" />
+            Send swap transaction
+          </button>
+        </div>
+
+        <div class="card mt-4">
+          <div class="card-body">
+            <h5 class="card-title mb-2">Your swap sends</h5>
+            <p class="text-muted mb-3">
+              Only outgoing transfers from <span class="font-monospace">{{ activeAccount?.address || '…' }}</span> to this swap bridge.
+            </p>
+
+            <div v-if="!activeAccount?.address" class="text-muted py-3">
+              Select an account to see swap history.
+            </div>
+            <div v-else-if="swapTxLoading && swapTransactions.length === 0" class="text-center py-4 text-muted">
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Loading…
+            </div>
+            <div v-else-if="swapTransactions.length === 0" class="text-muted py-3 mb-0">
+              No swap deposits from this wallet yet.
+            </div>
+            <div v-else class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th class="text-end">Amount</th>
+                    <th>Message (mainnet)</th>
+                    <th>Confirmations</th>
+                    <th>Transaction</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, idx) in swapTransactions" :key="swapTxRowKey(row, idx)">
+                    <td class="text-muted">{{ formatSwapTxDate(row) }}</td>
+                    <td class="text-end font-monospace">{{ formatSwapTxAmount(row) }}</td>
+                    <td>
+                      <span
+                        v-if="swapTxMessage(row)"
+                        class="font-monospace text-break d-inline-block"
+                        style="max-width: 14rem;"
+                        :title="swapTxMessage(row)"
+                      >{{ swapTxMessage(row) }}</span>
+                      <span v-else class="text-muted">—</span>
+                    </td>
+                    <td>
+                      <span :class="swapTxConfirmClass(row)">{{ formatSwapTxConfirmations(row) }}</span>
+                    </td>
+                    <td>
+                      <a
+                        v-if="swapTxId(row)"
+                        :href="explorerUrlForTx(swapTxId(row))"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="font-monospace text-primary text-decoration-none"
+                      >{{ formatSwapTxIdShort(row) }}</a>
+                      <span v-else class="text-muted">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <Teleport to="body">
       <div
@@ -43,8 +153,8 @@
                     <Check :size="28" class="text-success" />
                   </span>
                 </div>
-                <p class="text-muted small mb-2">Transaction broadcast to the mempool.</p>
-                <p v-if="txId" class="text-muted small mb-0 font-monospace text-break">{{ txId }}</p>
+                <p class="text-muted mb-2">Transaction broadcast to the mempool.</p>
+                <p v-if="txId" class="text-muted mb-0 font-monospace text-break">{{ txId }}</p>
                 <a
                   v-if="txId"
                   :href="explorerTxUrl"
@@ -90,7 +200,7 @@
                   </div>
                   <div class="mb-0">
                     <label class="form-label">Amount (PHP)</label>
-                    <div class="float-end text-muted small">
+                    <div class="float-end text-muted">
                       Available:
                       <button type="button" class="btn btn-link btn-sm p-0 align-baseline text-decoration-none" @click.prevent="setMaxAmount">
                         {{ balance }}
@@ -240,8 +350,8 @@
               <button type="button" class="btn-close" @click="closeConfirmModal"></button>
             </div>
             <div class="modal-body">
-              <p class="small text-muted mb-2">Bridge address (testnet)</p>
-              <p class="font-monospace small text-break mb-3">{{ SWAP_BRIDGE_ADDRESS }}</p>
+              <p class="text-muted mb-2">Bridge address (testnet)</p>
+              <p class="font-monospace text-break mb-3">{{ SWAP_BRIDGE_ADDRESS }}</p>
               <p class="mb-1"><strong>Amount:</strong> {{ form.amount }} PHP</p>
               <p class="mb-1"><strong>Fee:</strong> {{ feeDisplay }} PHP</p>
               <p v-if="form.receiver.trim()" class="mb-0"><strong>Message (receiver):</strong> {{ form.receiver.trim() }}</p>
@@ -269,7 +379,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { Check, Send as SendIcon, User, BookOpen } from 'lucide-vue-next'
+import { Check, Send as SendIcon, User, BookOpen, ExternalLink } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useAccountsStore } from '../stores/accounts'
 import { getPublicKey, signMessage, verifyAddress, CHAIN_ID } from '../utils/wallet'
@@ -277,11 +387,14 @@ import { api, EXPLORER_BASE } from '../utils/api'
 import { toast } from '../utils/toast'
 import { getAddressBook } from '../utils/db'
 import PasswordConfirmModal from '../components/PasswordConfirmModal.vue'
-import { SWAP_BRIDGE_ADDRESS, SWAP_MIN_AMOUNT } from '../constants/swap'
+import { SWAP_BRIDGE_ADDRESS, SWAP_MIN_AMOUNT, SWAP_V2_HISTORY_URL } from '../constants/swap'
+
+/** Matches node `TX_TYPE_SEND` — only standard transfers count as swap deposits. */
+const TX_TYPE_SEND = 1
 
 export default {
   name: 'Swap',
-  components: { PasswordConfirmModal, Check, SendIcon, User, BookOpen },
+  components: { PasswordConfirmModal, Check, SendIcon, User, BookOpen, ExternalLink },
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
@@ -289,7 +402,7 @@ export default {
     const { activeAccount: storeActiveAccount, masterKey: storeMasterKey, isQuickLogin: storeIsQuickLogin } = storeToRefs(authStore)
     const { accounts: storeAccounts } = storeToRefs(accountsStore)
 
-    const showModal = ref(true)
+    const showModal = ref(false)
     const showAddressBookModal = ref(false)
     const addressBookContacts = ref([])
     const recipientPickerTab = ref('addressbook')
@@ -301,6 +414,8 @@ export default {
     const fee = ref('0')
     const txSuccess = ref(false)
     const txId = ref('')
+    const swapTransactions = ref([])
+    const swapTxLoading = ref(false)
 
     const form = reactive({
       receiver: '',
@@ -329,6 +444,92 @@ export default {
       const base = EXPLORER_BASE.endsWith('/') ? EXPLORER_BASE : EXPLORER_BASE + '/'
       return `${base}tx.php?id=${encodeURIComponent(txId.value)}`
     })
+
+    function explorerUrlForTx(id) {
+      if (!id) return EXPLORER_BASE
+      const base = EXPLORER_BASE.endsWith('/') ? EXPLORER_BASE : EXPLORER_BASE + '/'
+      return `${base}tx.php?id=${encodeURIComponent(id)}`
+    }
+
+    function isWalletSwapSend(row, walletAddr) {
+      if (!walletAddr || !row) return false
+      const src = row.src || row.from || ''
+      const dst = row.dst || row.to || ''
+      if (src !== walletAddr || dst !== SWAP_BRIDGE_ADDRESS) return false
+      const t = row.type
+      if (t != null && Number(t) !== TX_TYPE_SEND) return false
+      return true
+    }
+
+    async function loadSwapTransactions() {
+      const addr = storeActiveAccount.value?.address
+      if (!addr || CHAIN_ID !== '01') {
+        swapTransactions.value = []
+        return
+      }
+      swapTxLoading.value = true
+      try {
+        const data = await api.getTransactions(addr, 1, 1000)
+        const list = Array.isArray(data) ? data : []
+        swapTransactions.value = list
+          .filter((row) => isWalletSwapSend(row, addr))
+          .sort((a, b) => Number(b.date ?? 0) - Number(a.date ?? 0))
+      } catch (e) {
+        console.error('Failed to load swap transactions:', e)
+        swapTransactions.value = []
+      } finally {
+        swapTxLoading.value = false
+      }
+    }
+
+    function swapTxConfirmations(row) {
+      const c = row.confirmation ?? row.confirmations ?? 0
+      if (typeof c === 'number') return c
+      const n = parseInt(c, 10)
+      return Number.isNaN(n) ? 0 : n
+    }
+
+    function formatSwapTxConfirmations(row) {
+      const c = swapTxConfirmations(row)
+      if (c === -1) return 'Mempool'
+      return String(c)
+    }
+
+    function swapTxConfirmClass(row) {
+      return swapTxConfirmations(row) === -1 ? 'text-warning' : 'text-muted'
+    }
+
+    function swapTxId(row) {
+      if (typeof row === 'string') return row
+      return row?.id ?? row?.transaction ?? row?.tx_id ?? ''
+    }
+
+    function formatSwapTxIdShort(row) {
+      const id = swapTxId(row)
+      if (!id || id.length <= 20) return id
+      return `${id.slice(0, 10)}…${id.slice(-8)}`
+    }
+
+    function swapTxRowKey(row, idx) {
+      return swapTxId(row) || `swap-tx-${idx}`
+    }
+
+    function formatSwapTxDate(row) {
+      const t = Number(row.date ?? row.timestamp ?? 0)
+      if (!t) return '—'
+      return new Date(t * 1000).toLocaleString()
+    }
+
+    function formatSwapTxAmount(row) {
+      const v = parseFloat(row.val ?? row.amount ?? 0)
+      return `${Number.isFinite(v) ? v.toFixed(8) : '0'} PHP`
+    }
+
+    function swapTxMessage(row) {
+      const m = row.message ?? row.msg ?? ''
+      const s = typeof m === 'string' ? m.trim() : ''
+      return s || ''
+    }
 
     function validateReceiver() {
       delete errors.receiver
@@ -371,14 +572,23 @@ export default {
       validateAmount()
     }
 
+    function openSwapModal() {
+      if (!storeActiveAccount.value) {
+        toast.error('Select an account first')
+        return
+      }
+      showModal.value = true
+    }
+
     function closeModal() {
       if (confirming.value) return
       showAddressBookModal.value = false
       showConfirmModal.value = false
       showPasswordModal.value = false
       tempMasterKey.value = null
+      txSuccess.value = false
+      txId.value = ''
       showModal.value = false
-      router.push({ name: 'Dashboard' })
     }
 
     function onBackdropClick() {
@@ -424,7 +634,8 @@ export default {
       form.amount = null
       Object.keys(errors).forEach((k) => delete errors[k])
       showModal.value = false
-      router.push({ name: 'Dashboard' })
+      loadBalance()
+      loadSwapTransactions()
     }
 
     function requestSubmit() {
@@ -497,6 +708,7 @@ export default {
         txSuccess.value = true
         toast.success('Swap transaction broadcast')
         loadBalance()
+        loadSwapTransactions()
       } catch (e) {
         console.error('Swap error:', e)
         toast.error(e.message || 'Swap failed')
@@ -529,9 +741,17 @@ export default {
       if (!v) tempMasterKey.value = null
     })
 
+    watch(
+      () => storeActiveAccount.value?.address,
+      (addr) => {
+        if (CHAIN_ID !== '01') return
+        if (addr) loadSwapTransactions()
+        else swapTransactions.value = []
+      }
+    )
+
     function onEscapeKey(e) {
       if (e.key !== 'Escape') return
-      if (!showModal.value) return
       if (confirming.value) return
       if (showAddressBookModal.value) {
         closeAddressPickerModal()
@@ -546,7 +766,7 @@ export default {
         tempMasterKey.value = null
         return
       }
-      closeModal()
+      if (showModal.value) closeModal()
     }
 
     onMounted(() => {
@@ -556,6 +776,7 @@ export default {
       }
       loadBalance()
       loadFee()
+      loadSwapTransactions()
       window.addEventListener('keydown', onEscapeKey)
     })
 
@@ -566,7 +787,20 @@ export default {
     return {
       SWAP_BRIDGE_ADDRESS,
       SWAP_MIN_AMOUNT,
+      SWAP_V2_HISTORY_URL,
       showModal,
+      openSwapModal,
+      swapTransactions,
+      swapTxLoading,
+      explorerUrlForTx,
+      formatSwapTxDate,
+      formatSwapTxAmount,
+      swapTxMessage,
+      formatSwapTxConfirmations,
+      swapTxConfirmClass,
+      swapTxId,
+      formatSwapTxIdShort,
+      swapTxRowKey,
       showPasswordModal,
       showConfirmModal,
       form,

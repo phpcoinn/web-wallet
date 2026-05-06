@@ -122,7 +122,7 @@
                                                 </a>
                                             </div>
                                             <div class="col">
-                                                <a class="dropdown-icon-item" href="https://main1.phpcoin.net/apps/explorer/" target="_blank" rel="noopener noreferrer" title="Blockchain Explorer">
+                                                <a class="dropdown-icon-item" :href="EXPLORER_SEARCH_URL" target="_blank" rel="noopener noreferrer" title="Blockchain Explorer">
                                                     <i class="bx bx-search-alt font-size-22 text-info mb-1"></i>
                                                     <span>Explorer</span>
                                                 </a>
@@ -422,7 +422,9 @@ import { SWAP_ENABLED } from '../constants/swap'
 import { APP_VERSION } from '../constants/appMeta'
 import ChangelogModal from './ChangelogModal.vue'
 
-const EXPLORER_SEARCH_URL = 'https://main1.phpcoin.net/apps/explorer/'
+import { MAIN_URL } from '../utils/mainUrl.js'
+
+const EXPLORER_SEARCH_URL = `${MAIN_URL}/apps/explorer/`
 
 export default {
   name: 'AppLayout',
@@ -675,7 +677,8 @@ export default {
       otherAccounts,
       jdenticonSvg,
       getBalance,
-      switchToAccount
+      switchToAccount,
+      EXPLORER_SEARCH_URL
     }
   }
 }

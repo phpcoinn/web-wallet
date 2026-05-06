@@ -17,7 +17,7 @@ const remoteWalletUrl =
   'https://wallet.phpcoin.net/'
 
 /** Keep in sync with web-wallet/src/constants/swap.js (`SWAP_ENABLED`). */
-const SWAP_ENABLED = false
+const SWAP_ENABLED = true
 
 function normalizeLoadUrl(url) {
   const u = url.trim()
