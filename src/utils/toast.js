@@ -3,27 +3,38 @@
  */
 import Swal from 'sweetalert2'
 
-const DEFAULT_DURATION = 3000
-const ERROR_DURATION = 5000
+const DEFAULT_DURATION = 1000
 
 function show(message, icon, duration = DEFAULT_DURATION) {
   const isError = icon === 'error'
-  const ms = isError ? ERROR_DURATION : duration
+
+  if (isError) {
+    return Swal.fire({
+      icon: 'error',
+      title: message,
+      showConfirmButton: true,
+      confirmButtonText: 'OK',
+      showCloseButton: true,
+      allowOutsideClick: true,
+      allowEscapeKey: true,
+    })
+  }
 
   return Swal.fire({
     icon,
     title: message,
-    timer: ms,
-    timerProgressBar: false,
-    showConfirmButton: true,
-    confirmButtonText: 'OK',
+    timer: duration,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    showCloseButton: true,
     allowOutsideClick: true,
+    allowEscapeKey: true,
   })
 }
 
 export const toast = {
   success: (message, duration) => show(message, 'success', duration),
-  error: (message, duration) => show(message, 'error', duration ?? ERROR_DURATION),
+  error: (message) => show(message, 'error'),
   warning: (message, duration) => show(message, 'warning', duration),
   info: (message, duration) => show(message, 'info', duration),
 }

@@ -72,6 +72,12 @@ const routes = [
     meta: { requiresAuth: true, layout: true }
   },
   {
+    path: '/tools',
+    name: 'Tools',
+    component: () => import('../pages/Tools.vue'),
+    meta: { requiresAuth: true, layout: true }
+  },
+  {
     path: '/create-account',
     redirect: (to) => {
       const m = to.query.migrate

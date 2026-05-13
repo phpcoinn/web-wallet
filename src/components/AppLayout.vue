@@ -269,6 +269,12 @@
                                     </router-link>
                                 </li>
                                 <li>
+                                    <router-link to="/tools" active-class="active">
+                                        <i data-feather="tool"></i>
+                                        <span>Tools</span>
+                                    </router-link>
+                                </li>
+                                <li>
                                     <router-link to="/masternodes" active-class="active">
                                         <i data-feather="server"></i>
                                         <span>Masternodes</span>
