@@ -152,6 +152,133 @@
             </template>
           </div>
         </div>
+
+        <div class="card mt-4">
+          <div class="card-header">
+            <h5 class="card-title mb-0">Stake mining</h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3">
+              Staking-backed lightweight mining: sign a fixed authorization message and request a payout from the
+              pool reserve. No CPU hashing — rewards depend on balance, account age, on-chain activity, and pool
+              reserve.
+            </p>
+
+            <div v-if="!authStore.activeAccount?.address" class="alert alert-warning mb-0">No active account.</div>
+
+            <template v-else>
+              <div class="mb-3">
+                <span class="text-muted d-block mb-1">Mining as</span>
+                <code class="user-select-all text-break">{{ authStore.activeAccount.address }}</code>
+              </div>
+
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  :disabled="stakePreviewLoading || stakeMining"
+                  @click="loadStakePreview"
+                >
+                  <span v-if="stakePreviewLoading" class="spinner-border spinner-border-sm me-1" role="status" />
+                  Refresh preview
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  :disabled="!stakeCanMine || stakeMining || stakePreviewLoading"
+                  @click="onStakeMineClick"
+                >
+                  <span v-if="stakeMining" class="spinner-border spinner-border-sm me-2" role="status" />
+                  Mine (stake)
+                </button>
+              </div>
+
+              <div v-if="stakePreviewLoading && !stakePreview" class="text-muted">Loading preview…</div>
+              <div v-else-if="stakePreviewError" class="alert alert-danger mb-3 py-2">{{ stakePreviewError }}</div>
+
+              <template v-else-if="stakePreview">
+                <div class="row g-2 mb-3">
+                  <div class="col-sm-6 col-md-4">
+                    <div class="border rounded p-2 h-100">
+                      <div class="text-muted">Potential payout</div>
+                      <div class="fw-semibold">{{ stakePreview.potential_reward }} {{ STAKE_MINE_COIN }}</div>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="border rounded p-2 h-100">
+                      <div class="text-muted">Weight</div>
+                      <div class="fw-semibold font-monospace">{{ stakePreview.weight }}</div>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="border rounded p-2 h-100">
+                      <div class="text-muted">Pool reserve</div>
+                      <div class="fw-semibold">{{ stakePreview.reserve_balance }} {{ STAKE_MINE_COIN }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <table class="table table-sm table-bordered mb-3">
+                  <tbody>
+                    <tr>
+                      <th scope="row" class="text-muted" style="width: 40%">Your balance</th>
+                      <td>{{ stakePreview.address_balance }} {{ STAKE_MINE_COIN }}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Age / activity blocks</th>
+                      <td>{{ stakePreview.age_blocks }} / {{ stakePreview.activity_blocks }}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Factors (√bal × age × activity)</th>
+                      <td class="font-monospace">
+                        {{ stakePreview.balance_factor }} × {{ stakePreview.age_factor }} ×
+                        {{ stakePreview.activity_factor }}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Cooldown</th>
+                      <td>
+                        <span v-if="stakePreview.cooldown_mempool" class="text-warning">Mempool payout pending</span>
+                        <span v-else-if="Number(stakePreview.cooldown_chain_blocks_remaining) > 0">
+                          {{ stakePreview.cooldown_chain_blocks_remaining }} block(s) remaining
+                        </span>
+                        <span v-else class="text-success">Ready</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Can mine now</th>
+                      <td>
+                        <span v-if="stakePreview.mine_would_accept" class="text-success">Yes</span>
+                        <span v-else class="text-danger">No</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <ul v-if="stakeBlockerMessages.length" class="mb-3 text-danger">
+                  <li v-for="(msg, i) in stakeBlockerMessages" :key="i">{{ msg }}</li>
+                </ul>
+              </template>
+
+              <div v-if="stakeLastMineResult?.txid" class="alert alert-success mb-0 py-2">
+                <div class="fw-semibold mb-1">Last payout submitted</div>
+                <div>
+                  Earned <strong>{{ stakeLastMineResult.potential_reward ?? stakeLastMineResult.amount_float }}</strong>
+                  {{ STAKE_MINE_COIN }}
+                </div>
+                <a
+                  :href="stakeTxExplorerUrl(stakeLastMineResult.txid)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="font-monospace text-break"
+                >
+                  {{ stakeLastMineResult.txid }}
+                </a>
+              </div>
+              <div v-else-if="stakeLastMineError" class="alert alert-danger mb-0 py-2">{{ stakeLastMineError }}</div>
+            </template>
+          </div>
+        </div>
       </div>
 
       <div class="col-lg-4">
@@ -181,6 +308,11 @@
       action-label="Enter your password to open the verifier with a signed login request."
       @confirm="onVerifierPasswordConfirmed"
     />
+    <PasswordConfirmModal
+      v-model="showStakeMinePasswordModal"
+      action-label="Enter your password to sign stake mining authorization and request a payout."
+      @confirm="onStakeMinePasswordConfirmed"
+    />
     <VerifierModal
       v-model="showVerifierModal"
       @verified="onVerifierInWalletSuccess"
@@ -199,8 +331,11 @@ import { toast } from '../utils/toast'
 import PasswordConfirmModal from '../components/PasswordConfirmModal.vue'
 import VerifierModal from '../components/VerifierModal.vue'
 import { useMinerStore } from '../stores/miner'
+import { useStakeMinerStore } from '../stores/stakeMiner'
+import { stakeMineExplorerTxUrl, STAKE_MINE_COIN } from '../utils/stakeMine'
 
 const minerStore = useMinerStore()
+const stakeMinerStore = useStakeMinerStore()
 const {
   miningUrlInput,
   cpu,
@@ -230,6 +365,36 @@ const authStore = useAuthStore()
 const accountsStore = useAccountsStore()
 const showVerifierPasswordModal = ref(false)
 const showVerifierModal = ref(false)
+const showStakeMinePasswordModal = ref(false)
+
+const {
+  previewLoading: stakePreviewLoading,
+  previewError: stakePreviewError,
+  preview: stakePreview,
+  mining: stakeMining,
+  lastMineResult: stakeLastMineResult,
+  lastMineError: stakeLastMineError,
+  canMine: stakeCanMine,
+  blockerMessages: stakeBlockerMessages
+} = storeToRefs(stakeMinerStore)
+
+const { loadPreview: loadStakePreview, onPasswordConfirmed: stakeMinePasswordConfirm } = stakeMinerStore
+
+function stakeTxExplorerUrl(txid) {
+  return stakeMineExplorerTxUrl(txid)
+}
+
+function onStakeMinePasswordConfirmed(masterKey) {
+  showStakeMinePasswordModal.value = false
+  stakeMinePasswordConfirm(masterKey)
+}
+
+function onStakeMineClick() {
+  const needPassword = stakeMinerStore.requestMine()
+  if (needPassword === 'password') {
+    showStakeMinePasswordModal.value = true
+  }
+}
 
 function openVerifierInNewTab(privateKey) {
   try {
