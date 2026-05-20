@@ -1,7 +1,6 @@
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import changelogRaw from '../../CHANGELOG.md?raw'
-import { getLoginAtBeforeThisSession } from './lastLogin'
 
 marked.setOptions({ gfm: true, breaks: true })
 
@@ -104,15 +103,11 @@ export function getWhatsNewDisplayPayload() {
 }
 
 /**
- * Show only if the login **before this session** was before the release date (first time
- * back after a dated release), and until the user dismisses this fingerprint once.
+ * Show until the user dismisses this changelog fingerprint once. A new release (new
+ * fingerprint) shows again even if you already logged in on the release day.
  */
 export function shouldShowWhatsNewAlert(payload) {
-  if (!payload || !payload.publishedAtMs) return false
-  const loginBeforeThis = getLoginAtBeforeThisSession()
-  if (loginBeforeThis > 0 && loginBeforeThis >= payload.publishedAtMs) {
-    return false
-  }
+  if (!payload?.fingerprint) return false
   try {
     return localStorage.getItem(WHATS_NEW_SEEN_KEY) !== payload.fingerprint
   } catch {

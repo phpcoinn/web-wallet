@@ -155,7 +155,10 @@
 
         <div class="card mt-4">
           <div class="card-header">
-            <h5 class="card-title mb-0">Stake mining</h5>
+            <h5 class="card-title mb-0 d-flex align-items-center gap-2 flex-wrap">
+              Stake mining
+              <span class="badge bg-primary text-white">New</span>
+            </h5>
           </div>
           <div class="card-body">
             <p class="text-muted mb-3">

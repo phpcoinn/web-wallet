@@ -5,6 +5,17 @@ Version numbers match the app (see the footer).
 
 ## [Unreleased]
 
+## [2.0.9] — 2026-05-20
+
+- **What’s new** on the dashboard shows again after each changelog update until you dismiss it (no longer hidden just because you logged in on the release day).
+- **New** badges on the **Miner** menu and **Stake mining** card (primary background, white text).
+
+## [2.0.8] — 2026-05-20
+
+- **Stake mining** on the **Miner** page: staking-backed lightweight mining with no CPU hashing. **Refresh preview** loads your potential payout, weight, balance and activity factors, pool reserve, and cooldown from the public mine API; **Mine (stake)** signs the fixed authorization message (`PHP Coin Mining Authorization v1`) and submits a payout for the active account (quick login or password confirm).
+- After a successful stake mine, the wallet shows the earned amount and a link to the payout transaction on the explorer.
+- **Miner** sidebar item and **Stake mining** card header include a **New** badge (theme primary, white text) so the feature stands out next to classic PoW mining.
+
 ## [2.0.4] — 2026-04-29
 
 - **Version 2.0.4** for the web wallet and **`electron/`** (footer and desktop builds stay aligned).

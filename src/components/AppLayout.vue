@@ -292,6 +292,10 @@
                                         <i data-feather="zap"></i>
                                         <span>Miner</span>
                                         <span
+                                            v-if="!sidebarCompact"
+                                            class="badge bg-primary text-white ms-1 flex-shrink-0"
+                                        >New</span>
+                                        <span
                                             v-if="minerRunning && !sidebarCompact"
                                             class="sidebar-miner-nav-badge ms-auto d-inline-flex align-items-center justify-content-center"
                                             title="Mining active — open Miner for details"
