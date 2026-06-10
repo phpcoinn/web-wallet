@@ -1,6 +1,6 @@
 {
   "name": "phpcoin-wallet-electron",
-  "version": "2.0.4",
+  "version": "2.0.9",
   "private": true,
   "description": "Electron shell that loads the wallet from https://wallet.phpcoin.net/ by default (single web source). Optional: bundled ../dist, Vite dev URL via env.",
   "homepage": "https://phpcoin.net",
