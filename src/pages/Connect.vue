@@ -127,7 +127,7 @@
             <template v-if="isAuthenticated">
               <hr>
 
-              <div v-if="walletAccounts.length > 1" class="mb-3">
+              <div v-if="view === 'auth' && walletAccounts.length > 1" class="mb-3">
                 <label class="form-label small">Select account:</label>
                 <select class="form-select" v-model="selectedAccountIndex">
                   <option
@@ -138,6 +138,11 @@
                     {{ acc.name || 'Account' }} — {{ shortAddr(acc.address) }}
                   </option>
                 </select>
+              </div>
+
+              <div v-else-if="view === 'signTx' && signingAccount" class="bg-light rounded p-2 mb-3">
+                <div class="small fw-medium">{{ signingAccount.name || 'Signing account' }}</div>
+                <code class="small text-break">{{ signingAccount.address }}</code>
               </div>
 
               <div v-else-if="currentAccount" class="bg-light rounded p-2 mb-3">
@@ -233,6 +238,20 @@ export default {
 
     const requestDomain = computed(() => pendingRequest.value?.domain || '')
     const transaction = computed(() => pendingRequest.value?.transaction || null)
+    const signingAddress = computed(() => {
+      const src = transaction.value?.src
+      return typeof src === 'string' ? src.trim() : ''
+    })
+
+    const signingAccount = computed(() => {
+      if (view.value !== 'signTx') return null
+      if (resolvedPrivateKey.value) {
+        const acc = phpcoinCrypto.importPrivateKey(resolvedPrivateKey.value)
+        return acc && acc.address === signingAddress.value ? acc : null
+      }
+      if (!signingAddress.value || walletAccounts.value.length === 0) return null
+      return walletAccounts.value.find((acc) => acc?.address === signingAddress.value) || null
+    })
 
     const currentAccount = computed(() => {
       if (resolvedPrivateKey.value) {
@@ -368,6 +387,23 @@ export default {
       return null
     }
 
+    function getSigningPrivateKey() {
+      if (resolvedPrivateKey.value) {
+        const acc = phpcoinCrypto.importPrivateKey(resolvedPrivateKey.value)
+        if (!acc || acc.address !== signingAddress.value) {
+          throw new Error('The loaded private key does not match the transaction source address')
+        }
+        return resolvedPrivateKey.value
+      }
+      if (!masterKey.value) {
+        throw new Error('No wallet key available')
+      }
+      if (!signingAccount.value) {
+        throw new Error('No wallet account matches the transaction source address')
+      }
+      return decrypt(signingAccount.value.privateKey, masterKey.value)
+    }
+
     // ---- Approve / Reject ----
 
     function handleApprove() {
@@ -378,10 +414,9 @@ export default {
       approving.value = true
       approveError.value = ''
       try {
-        const privateKey = getActivePrivateKey()
-        if (!privateKey) throw new Error('No private key available')
-
         if (req.type === 'auth') {
+          const privateKey = getActivePrivateKey()
+          if (!privateKey) throw new Error('No private key available')
           const account = phpcoinCrypto.importPrivateKey(privateKey)
           if (!account) throw new Error('Invalid private key')
           const message = JSON.stringify({
@@ -395,6 +430,7 @@ export default {
           }, req.origin)
           statusMessage.value = 'Connection approved'
         } else {
+          const privateKey = getSigningPrivateKey()
           const signed = signTransactionLocal(req.transaction, privateKey, req.chainId)
           event.source.postMessage({
             type: 'PHPCOIN_SIGN_TX_RESPONSE',
@@ -452,7 +488,7 @@ export default {
       view, loginMode, loading, approving, loginError, approveError, statusMessage,
       passwordInput, privateKeyInput, showPasswordField, showKeyField,
       isAuthenticated, walletAccounts, selectedAccountIndex, currentAccount,
-      requestDomain, transaction, showTxDetails, signTxBalance,
+      requestDomain, transaction, signingAccount, showTxDetails, signTxBalance,
       handlePasswordLogin, handlePrivateKeyLogin, handleApprove, handleReject,
       shortAddr, formatAmount, logoUrl: LOGO_URL
     }
