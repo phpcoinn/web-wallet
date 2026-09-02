@@ -120,6 +120,13 @@
                 </button>
               </form>
 
+              <p class="text-center text-muted mt-3 mb-0">
+                Don't have an account?
+                <a href="https://wallet.phpcoin.net/" target="_blank" rel="noopener noreferrer">
+                  Open PHPCoin Wallet
+                </a>
+              </p>
+
               <div v-if="loginError" class="alert alert-danger mt-3 mb-0 small">{{ loginError }}</div>
             </template>
 
@@ -191,13 +198,9 @@ import { deriveMasterKey, decrypt } from '../utils/crypto'
 const PASSWORD_STORAGE_KEY = 'phpcoin_wallet_password'
 const LOGO_URL = (import.meta.env.VITE_COMMON_ASSETS || '/apps/common') + '/img/logo.png'
 
-/**
- * Replicate phpcoin-crypto.browser.js signTransaction (not in npm package).
- * Builds canonical tx_base and signs with chainId prefix.
- */
-function signTransactionLocal(tx, privateKey, chainId) {
+function signTransactionLocal(tx, privateKey, chainId, signatureBase = '') {
   const publicKey = phpcoinCrypto.getPublicKey(privateKey)
-  const txBase =
+  const txBase = signatureBase || (
     Number(tx.val || 0).toFixed(8) +
     '-' + Number(tx.fee || 0).toFixed(8) +
     '-' + (tx.dst == null ? '' : tx.dst) +
@@ -205,6 +208,7 @@ function signTransactionLocal(tx, privateKey, chainId) {
     '-' + (tx.type != null ? tx.type : 1) +
     '-' + publicKey +
     '-' + (tx.date || Math.floor(Date.now() / 1000))
+  )
   const signature = phpcoinCrypto.sign(chainId + txBase, privateKey)
   return Object.assign({}, tx, { public_key: publicKey, signature })
 }
@@ -283,14 +287,16 @@ export default {
       }
 
       if (type === 'PHPCOIN_REQUEST_SIGN_TX') {
-        const { domain, issued_at, transaction: tx, chainId } = payload || {}
+        const { domain, issued_at, transaction: tx, chainId, signatureBase } = payload || {}
         if (!tx || typeof tx !== 'object') return
         if (domain !== event.origin) return
         if (Math.abs(Date.now() - issued_at) > 120000) return
         pendingEvent.value = event
         pendingRequest.value = {
           type: 'signTx', origin: event.origin, domain, issued_at,
-          transaction: tx, chainId: chainId != null ? String(chainId) : '00'
+          transaction: tx,
+          chainId: chainId != null ? String(chainId) : '00',
+          signatureBase: signatureBase != null ? String(signatureBase) : ''
         }
         view.value = 'signTx'
         signTxBalance.value = null
@@ -431,7 +437,7 @@ export default {
           statusMessage.value = 'Connection approved'
         } else {
           const privateKey = getSigningPrivateKey()
-          const signed = signTransactionLocal(req.transaction, privateKey, req.chainId)
+          const signed = signTransactionLocal(req.transaction, privateKey, req.chainId, req.signatureBase)
           event.source.postMessage({
             type: 'PHPCOIN_SIGN_TX_RESPONSE',
             payload: { signedTransaction: btoa(JSON.stringify(signed)) }

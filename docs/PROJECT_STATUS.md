@@ -1,18 +1,22 @@
 # PHP Coin Web Wallet – Project Status
 
-**Last updated:** 2026-04-22
+**Last updated:** 2026-06-10
 
-**Release:** **`1.2.1`** — see `package.json` (also shown in the app footer via `APP_VERSION`).
+**Release:** **`2.0.9`** — see `package.json` (also shown in the app footer via `APP_VERSION`).
+
+**Status:** **Phase 1 complete** — web wallet + desktop shell + public download pipeline. **Phase 2** = Android (deferred). Task list: [`dev/tasks.txt`](../dev/tasks.txt).
 
 ---
 
 ## Overview
 
-Vue 3 SPA for the PHP Coin wallet: login (password, private key, quick login), **signed autologin links** (`#/autologin`), dashboard, send/receive/**swap (testnet only)**, transactions, address book, **masternodes**, account management, and **Verifier** integration (signed `loginrequest` opens the Verifier dapp without standard login). **PWA** enabled (service worker). Uses the Minia admin theme (Bootstrap) with Tailwind CSS v4 for utilities, customized for PHP Coin branding.
+Vue 3 SPA for the PHP Coin wallet: login (password, private key, quick login), **signed autologin links** (`#/autologin`), dashboard, send/receive/**swap (testnet only)**, transactions, address book, **masternodes**, account management, **Tools** (sign message), **Connect** (dapp postMessage bridge), **Miner** (browser WASM PoW + stake mining), and **Verifier** integration (signed `loginrequest` opens the Verifier dapp without standard login). **PWA** enabled (service worker). Uses the Minia admin theme (Bootstrap) with Tailwind CSS v4 for utilities, customized for PHP Coin branding.
 
-**Desktop:** optional **Electron** shell in **`electron/`** (separate `package.json`, electron-builder **~33**). Produces **Linux** AppImage + deb and **Windows** NSIS + portable. **CI:** [`.github/workflows/build-desktop.yml`](../.github/workflows/build-desktop.yml) — builds Windows + Linux x64 on **`v*`** tag push or **manual** dispatch; `publish-release` job attaches artifacts to a **GitHub Release** (tag only). `preload` exposes native **Argon2** benchmark for the Miner page when running in Electron.
+**Production:** https://wallet.phpcoin.net/
 
-**Deploy:** Production builds target **mainnet** and **testnet** via `npm run build_dapps` and `npm run build_dapps_testnet` (see `.env.dapps` / `.env.dapps.testnet`). **Live verification:** mainnet and testnet deployments have been smoke-tested on production (2026-04).
+**Desktop:** Electron shell in **`electron/`** (v2, aligned **2.0.9**). **Remote-first** — packaged apps load the live web wallet by default; native Argon2 for classic mining via preload bridge. **CI:** [`.github/workflows/build-desktop.yml`](../.github/workflows/build-desktop.yml) — Windows + Linux x64 on **`v*`** tag → GitHub Release. **Downloads:** stable URLs on phpcoin.net (hourly sync from GitHub). See **[docs/DESKTOP.md](DESKTOP.md)**.
+
+**Deploy:** Production builds target **mainnet** and **testnet** via `npm run build_dapps` and `npm run build_dapps_testnet` (see `.env.dapps` / `.env.dapps.testnet`). Mainnet + testnet dapps deployments smoke-tested on production.
 
 ---
 
@@ -22,12 +26,14 @@ Vue 3 SPA for the PHP Coin wallet: login (password, private key, quick login), *
 |-------------|--------|
 | Framework   | Vue 3 (Composition API) |
 | Build       | Vite 5 |
-| Router      | Vue Router 4 |
+| Router      | Vue Router 4 (hash history) |
 | State       | Pinia |
-| UI base     | Minia (Bootstrap + MDI/FA via **`VITE_COMMON_ASSETS`**); Feather icons in sidebar (JS from same host) |
-| Utilities   | Tailwind CSS v4 (theme + utilities only; preflight off to avoid Bootstrap conflicts) |
+| UI base     | Minia (Bootstrap + MDI/FA via **`VITE_COMMON_ASSETS`**); Feather icons in sidebar |
+| Utilities   | Tailwind CSS v4 (theme + utilities only; preflight off) |
 | Crypto      | phpcoin-crypto (GitHub), idb (IndexedDB); wallet encryption in `src/utils/crypto.js` |
+| Mining      | WASM Argon2 (browser); native Argon2 in Electron; stake mining via `mine.php` API |
 | PWA         | `vite-plugin-pwa` — `registerSW` in `src/main.js` |
+| Desktop     | Electron ~33, electron-builder; separate `electron/package.json` |
 
 ---
 
@@ -35,104 +41,97 @@ Vue 3 SPA for the PHP Coin wallet: login (password, private key, quick login), *
 
 ```
 src/
-├── App.vue                 # Root: layout selection (AppLayout / AuthLayout) by route meta
-├── main.js                 # Entry: Tailwind/main.css + theme-modern; Minia CSS from VITE_COMMON_ASSETS; PWA registerSW
-├── components/
-│   ├── AppLayout.vue       # Authenticated layout: header, sidebar, slot, footer, dynamic script load for theme JS
-│   ├── AuthLayout.vue      # Login layout: logo, slot, footer, carousel
-│   ├── Address.vue         # Truncated address + copy
-│   ├── ChangelogModal.vue
-│   └── PasswordConfirmModal.vue
+├── App.vue
+├── main.js
+├── components/           # AppLayout, AuthLayout, Address, ChangelogModal, PasswordConfirmModal, …
 ├── pages/
-│   ├── Login.vue           # Legacy multiwallet migration modal (when old walletData present)
-│   ├── QuickLogin.vue
-│   ├── Autologin.vue       # Signed request + password decrypt (Telegram / deep links)
-│   ├── RestoreAccount.vue
-│   ├── Dashboard.vue
-│   ├── Send.vue
-│   ├── Swap.vue            # testnet only (CHAIN_ID 01), route guard
-│   ├── Receive.vue
-│   ├── TransactionHistory.vue
-│   ├── AddressBook.vue
-│   ├── Masternodes.vue
-│   └── AccountManager.vue
-├── router/index.js         # Routes + auth guard; `/create-account` redirects to Login with setup intent
-├── stores/                 # auth, accounts, theme
-└── utils/                  # api, wallet, crypto, db, toast, autologin.js, verifierLogin.js, mainUrl.js, legacyWallet.js, assets.js, …
+│   ├── Login.vue, QuickLogin.vue, Autologin.vue, RestoreAccount.vue
+│   ├── Dashboard.vue, Send.vue, Swap.vue, Receive.vue
+│   ├── TransactionHistory.vue, AddressBook.vue, Masternodes.vue, AccountManager.vue
+│   ├── Miner.vue         # Classic PoW (WASM / native) + stake mining
+│   ├── Tools.vue         # Sign message
+│   ├── Connect.vue       # Dapp postMessage sign-in / sign-tx
+│   └── Logout.vue        # Legacy dapps session cleanup
+├── router/index.js
+├── stores/               # auth, accounts, theme, stakeMiner
+└── utils/                # api, wallet, crypto, db, autologin, verifierLogin, legacyWallet, …
+
+electron/                 # Desktop shell (remote-first)
+public/                   # wallet_api.php, PWA icons, index.html / index.php
+docs/                     # PROJECT_STATUS, FEATURES, DESKTOP, LOGIN_ARCHITECTURE
+dev/tasks.txt             # Phase tracking
 ```
 
-- **`public/`** – `wallet_api.php`, PWA icons, `index.html` shell; optional **`public/assets/`** for flags/images if deployed without a separate static host.
-- **`theme/`** – Optional local copy of Minia HTML reference; **gitignored** (not part of the build).
+- **`public/`** – `wallet_api.php`, PWA icons; optional **`public/assets/`** for same-origin images.
+- **`theme/`** – Optional local Minia reference; **gitignored**.
 
 ---
 
 ## Authentication & Layout
 
-- **Router:** Hash mode (`createWebHashHistory`) so URLs are e.g. `http://phpcoin/apps/wallet3/#/dashboard`. No server `try_files` needed for SPA routes.
-- **Routes with `meta: { requiresAuth: true, layout: true }`** use `AppLayout` (sidebar: Dashboard, Send, Swap if testnet, Receive, Transactions, Address Book, Masternodes, Accounts).
-- **Login / Quick-login** use `AuthLayout` (no sidebar).
-- **Auth guard:** unauthenticated users hitting protected routes → `/login`; authenticated users hitting `/login` or `/quick-login` → `/dashboard`.
-- **Login modes:** See [docs/FEATURES.md](FEATURES.md). **Password** = multi-account wallet (accounts in IndexedDB, private keys encrypted with password, decrypt only when needed; optional "remember password"). **Private key** and **Quick login** = one-account wallet (session only; cannot be saved as permanent accounts; Quick login is for testing).
-- **API:** **`VITE_MAIN_URL`** (required, `https://…`) — node API is **`{VITE_MAIN_URL}/api.php`** (`MAIN_API_URL` in code). Explorer base is **`{VITE_MAIN_URL}/apps/explorer/`**. **`VITE_WALLET_API_URL`** targets **`wallet_api.php`** (`getPrice`, `test`): **https URL** or **same-origin path** (e.g. `/dapps.php?url=…/wallet_api.php` for dapps builds). **`wallet_api.php`** lives in **`public/`** and is copied into `dist/` on build.
-- **Static base:** **`VITE_APP_BASE`** — Vite `base` for bundled assets; deploy **`index.php`** + **`assets/`** under that path on the server (hash router; no SPA rewrite needed).
+- **Router:** Hash mode — e.g. `https://wallet.phpcoin.net/#/dashboard`.
+- **Routes with `meta: { requiresAuth: true, layout: true }`** use `AppLayout` (sidebar: Dashboard, Send, Swap if testnet, Receive, Transactions, Address Book, Masternodes, Miner, Tools, Accounts).
+- **Login / Quick-login** use `AuthLayout`.
+- **Auth guard:** unauthenticated → `/login`; authenticated on `/login` or `/quick-login` → `/dashboard`.
+- **Login modes:** See [docs/FEATURES.md](FEATURES.md). Password = multi-account (IndexedDB, encrypted keys). Private key / Quick login = session-only single account.
+- **Autologin:** Signed `#/autologin?request=…` — verified identity only; Send/Swap/Masternodes/Accounts need full login.
+- **Connect:** `Connect.vue` — postMessage bridge for dapps (sign-in, sign transaction).
+- **Logout:** `Logout.vue` — clears legacy dapps session when embedded.
+- **Planned (Phase 4 — dap.ad / IPFS):** In-wallet **IPFS upload + pay-to-pin** (backend: [PHPCoin IPFS](../../node/dev/dapad/ipfs-uploader/PROJECT_STATUS.md) at `upload.ipfs.phpcoin.net`), plus domain management — see [_master-docs/PROJECT-STATUS.md](../../_master-docs/PROJECT-STATUS.md) Phase 4. Standalone uploader UI remains; wallet becomes primary client.
+- **API:** **`VITE_MAIN_URL`** → `{VITE_MAIN_URL}/api.php`. **`VITE_WALLET_API_URL`** → `wallet_api.php` (price, verify proxy). **`VITE_APP_BASE`** — Vite `base` for assets.
 
 ---
 
-## Done
+## Done (phase 1)
 
-- [x] Initial project setup (Vue 3, Vite, Pinia, Vue Router).
-- [x] Quick login with PHP Coin private key; create new account and store locally (session).
-- [x] UI: Minia admin theme integrated (Bootstrap + icons + JS from theme).
-- [x] Tailwind CSS v4 added without breaking Bootstrap (theme + utilities only, no preflight).
-- [x] Layouts: `AppLayout` for authenticated pages, `AuthLayout` for login.
-- [x] PHP Coin customization:
-  - PHP Coin logo and name in header and auth page.
-  - Sidebar: wallet-only menu (Dashboard, Send, Swap on testnet, Receive, Transactions, Address Book, Masternodes, Accounts) with `router-link` and active state.
-  - Header: search (opens main node explorer with query); language selector (English only, “More languages coming soon”); theme toggle; apps dropdown (PHPCoin, Explorer, GitHub, KlingEx, Buy PHP Coin, Blog); notifications dropdown (empty); user dropdown with jdenticon avatar, bold full address, balance below (PHP ticker), account switcher (other accounts with jdenticon, address, name, balance); no settings icon or right bar.
-  - Auth carousel: three slides with PHP Coin philosophy (decentralization, wallet, community).
-  - Favicon, footer "PHP Coin Team", CSS variables for brand.
-  - Ticker symbol **PHP** (not PHPC) used consistently in UI and docs.
-- [x] Dashboard, Send, Receive, Transactions, Address Book, Masternodes, AccountManager, Swap (testnet) wired to layout and auth.
-- [x] **Accounts feature** – Full account management: table layout (actions, address, name, balance, status); add account (with optional name/description); edit name/description; view (address, public key, private key reveal with password, export Wallet/JSON/PHP); import single account (wallet file); switch account; delete account (password confirm); delete all accounts (password + confirmation, then logout); export backup (JSON); refresh balances.
-- [x] **Restore from backup** – RestoreAccount page: file picker + password; supports AccountManager backup format (`{ version, accounts }`) and Settings format (`{ accounts: encrypted }`).
-- [x] **Header account switcher** – User dropdown lists other accounts with jdenticon, address (prominent), name (if exists), balance; click to switch.
-- [x] **Toast** – Replaced with SweetAlert2 (success, error, warning, info).
-- [x] **Session persistence** – Auth session in sessionStorage so user stays logged in on refresh.
-- [x] **PasswordConfirmModal** – Reusable modal for password confirmation (add account, delete, export, delete all).
-- [x] **Login + RestoreAccount** – First-time setup and add-account flows via Login; restore from backup when no accounts (`/restore-account`).
-- [x] **Dashboard top row** – Four stat cards with Minia theme: (1) **Balance** – sparkline, counter (k/m format), “Since last week” change; (2) **Rewards** – type‑0 transactions only, sparkline, counter, “Since last week”; (3) **Network** – block height, difficulty chart (last 100 blocks), Synced/Offline status; (4) **PHP Price** – **live USD** from the external **coinInfo** API (via `wallet_api.php?q=getPrice`); **24h % change** from the same payload; sparkline **series** = last **7 daily closes** persisted server-side (not interpolated from a single change value).
-- [x] **Dashboard Account block** – QR code of address (replaces jdenticon); account name, description (if exists), balance (bold); address, public key, private key (hidden with reveal) with copy buttons; address verification via `getPublicKey` API – unverified shows warning alert + Verify button (PHPCoin Verifier); Trade (KlingEx) and Direct buy (buy.phpcoin.net) CTA buttons; Send/Receive links.
-- [x] **Dashboard Transactions block** – Latest 5 transactions; loading/empty states; “View all” link to full history.
-- [x] **API getPublicKey** – Added `api.getPublicKey(address)` for address verification on network ([PHPCoin Node API](https://main1.phpcoin.net/doc/#api-API-getPublicKey)).
-- [x] **Masternodes** – Create/remove flows with node API, client-side signature base, SweetAlert feedback; route `/masternodes`.
-- [x] **Swap (testnet)** – Visible when **`VITE_CHAIN_ID=01`** (`CHAIN_ID` in `src/utils/wallet.js`); sidebar + route guard; build with **`npm run build_dapps_testnet`** / `.env.dapps.testnet`.
-- [x] **Verifier login** – `buildVerifierLoginUrl` (`src/utils/verifierLogin.js`): signed **`loginrequest`** opens Verifier dapp without standard login.
-- [x] **Autologin page** – `Autologin.vue` + `utils/autologin.js` (signed payload, password decrypt, nonce replay protection).
-- [x] **Migrate from older multiwallet** – Legacy `walletData` migration in **`Login.vue`** + **`utils/legacyWallet.js`**; optional delete old storage from **AccountManager**.
-- [x] **Dapps deploy** – **`build_dapps`** / **`build_dapps_testnet`**; deployed mainnet + testnet on dapps node (per project tracking).
+### Core wallet
+- [x] Vue 3 + Vite + Pinia + hash router
+- [x] Multi-account password wallet (IndexedDB, encrypted keys)
+- [x] Quick login / private key session mode
+- [x] Dashboard, Send, Receive, Transactions, Address Book, Masternodes, AccountManager
+- [x] Swap (testnet only, `VITE_CHAIN_ID=01`)
+- [x] Restore from backup; legacy multiwallet migration (`Login.vue`, `legacyWallet.js`)
+- [x] Verifier integration — in-wallet verify + signed `loginrequest` to dapp
+- [x] Autologin page (Telegram bot / deep links)
+- [x] PWA (vite-plugin-pwa)
+- [x] Dapps deploy — `build_dapps` / `build_dapps_testnet`; mainnet + testnet live
+
+### 2.0.x features
+- [x] **Miner page** (2.0.2) — browser WASM Argon2 PoW; Electron native Argon2 via preload
+- [x] **Connect page** (2.0.4) — dapp postMessage sign-in / sign-tx
+- [x] **Logout flow** (2.0.4) — legacy dapps session bridge cleanup
+- [x] **Tools page** (2.0.7) — sign arbitrary message
+- [x] **Stake mining** (2.0.8) — preview + mine on Miner page (`stores/stakeMiner.js`, `mine.php`)
+- [x] Changelog modal fixes (2.0.9) — markdown rendering
+
+### Desktop & distribution (2026-06)
+- [x] Electron v2 shell — **remote-first** (`https://wallet.phpcoin.net/`)
+- [x] Linux AppImage + deb; Windows NSIS + portable
+- [x] GitHub Actions — tag `v*` → Release ([v2.0.9](https://github.com/phpcoinn/web-wallet/releases/tag/v2.0.9))
+- [x] phpcoin.net stable download URLs (`/download/phpcoin-wallet-desktop-*`)
+- [x] Hourly sync cron on phpcoin1 (`site/scripts/sync_web_wallet_desktop.sh`)
+- [x] Site index — new desktop links default; legacy electron-wallet in Resources
 
 ---
 
-## Todo (from dev/tasks.txt + inferred)
+## Phase 2 (deferred)
 
-- [x] **Layout** – AppLayout is the single wrapper for all authenticated pages (no separate layout components).
-- [x] **Accounts feature** – List, add, switch, naming, persistence, import/export, delete.
-- [x] **Migrate from older multiwallet** – Implemented: migrate modal on Login when legacy data exists; clear legacy blob from AccountManager when done.
-
-**Feature checklist (detailed steps):** [docs/FEATURES.md](FEATURES.md) — may lag behind this file; **PROJECT_STATUS** is the source of truth for shipped behavior.
+| Item | Notes |
+|------|-------|
+| **Android app** | Fresh project from web-wallet; not nativephp. See `dev/tasks.txt`. |
+| **iOS** | After Android POC, if pursued |
 
 ---
 
 ## Optional / Future
 
-- **Mining** – Not in the web wallet yet; this is the main **feature gap** vs the older **Electron** wallet. Would require node/miner integration in the browser (usually not practical for real PoW) or a **separate mining app** / **link to** the node or official miner; product decision needed.
-- **Richer price / OHLC** – Optional: pull multi-interval candles directly from an exchange API for the sparkline (today: daily closes from `wallet_api.php` snapshots + live spot from coinInfo).
-- **Optimize API calls** – Reduce redundant or parallel API requests (e.g. Dashboard loads balance, transactions, node info, price, network difficulty separately; consider batching, caching, or consolidating where possible).
-- **Optimize app assets** – Theme CSS/JS/fonts are primarily loaded from **`VITE_COMMON_ASSETS`**; optional `public/assets/` for same-origin images/libs should stay consistent with deploy base. Future: consolidate paths and cache policy.
-- **Search** – Currently opens main node explorer in new tab with query; in-app search can be added later.
-- **Notifications** – Implement blockchain messaging; dropdown shows “No notifications right now”.
-- **i18n** – Implement app internationalization; language selector currently has only English enabled (others disabled with “More languages with i18n (todo)”).
-- PHP Coin favicon asset (currently using theme favicon).
+- **mine_preview UX** — optional polish before stake mine (parity with telegrambot)
+- **i18n** — English only; selector placeholder exists
+- **Notifications** — blockchain messaging; dropdown placeholder
+- **API optimization** — batch/cache Dashboard requests
+- **Richer price / OHLC** — exchange candles for sparkline
+- **Token management UI** — smart contracts track
+- **Search** — currently opens explorer in new tab
 
 ---
 
@@ -140,67 +139,54 @@ src/
 
 ```bash
 npm install
-npm run dev              # dev server
+npm run dev              # dev server (port 3000)
 npm run dev_testnet      # dev with .env.testnet (CHAIN_ID 01)
-npm run build            # production build (default env)
-npm run build_dapps      # dapps mainnet mode (.env.dapps)
-npm run build_dapps_testnet  # dapps testnet (.env.dapps.testnet)
-npm run preview          # preview production build
+npm run build            # production build
+npm run build_dapps      # dapps mainnet (.env.dapps)
+npm run build_dapps_testnet
+npm run preview
 ```
 
-### Base path (configurable)
+### Desktop dev
 
-The app base path is set by **`VITE_APP_BASE`** (must end with `/`; a leading `/` is normal):
+```bash
+npm run electron:dev     # or: cd electron && npm run dev
+```
 
-- **Repository defaults** – `.env.development` / `.env.production` in this repo often use **`VITE_APP_BASE=/`** so the dev server is at **http://localhost:3000/** with assets at `/assets/...`.
-- **Subpath deploy** – For **`/apps/wallet3/`** (or similar), set `VITE_APP_BASE=/apps/wallet3/` in env. If **`VITE_APP_BASE` is omitted**, `vite.config.js` falls back to **`/apps/wallet3/`**.
+See **[docs/DESKTOP.md](DESKTOP.md)** for packaging, CI, and release checklist.
 
-The router uses `import.meta.env.BASE_URL`, which Vite sets from `base`.
+### Base path
 
-### Local dev on custom domain (e.g. http://phpcoin/apps/wallet3)
+**`VITE_APP_BASE`** must end with `/`. Repo defaults often use `/`; dapps deploy may use `/apps/wallet3/`. Router uses `import.meta.env.BASE_URL`.
 
-1. **Hosts** – Point the name to localhost (as root or with sudo):
-   ```bash
-   echo '127.0.0.1 phpcoin' | sudo tee -a /etc/hosts
-   ```
-2. **Dev server** – Vite `base` comes from `VITE_APP_BASE` (see above). **`host: true`** allows LAN access. APIs use **`VITE_MAIN_URL`** and **`VITE_WALLET_API_URL`** in the browser (no Vite proxy to the node).
-3. **Open** – Run `npm run dev` and open **http://phpcoin:3000/apps/wallet3/** (or, if you use a reverse proxy or port 80, **http://phpcoin/apps/wallet3/**).
+### Production deploy
 
-**Nginx proxy to dev:** To serve the dev app at **http://phpcoin/apps/wallet3/** (port 80), use the example in **`dev/nginx-phpcoin.conf`**. Symlink it into `sites-enabled` and reload nginx, e.g.:
-   ```bash
-   sudo ln -s /path/to/web-wallet/dev/nginx-phpcoin.conf /etc/nginx/sites-enabled/
-   sudo nginx -t && sudo systemctl reload nginx
-   ```
-   Then run `npm run dev` and open **http://phpcoin/apps/wallet3/**.
-
-### Production: serve app + wallet_api.php from /apps/wallet3
-
-1. **Base path** – Set `VITE_APP_BASE` in `.env.production` to match the URL path where you host `dist/` (e.g. `/` or `/apps/wallet3/`).
-
-2. **Build and deploy** – `wallet_api.php` is in **`public/`**, so it is included in `dist/` when you run `npm run build`. Copy the contents of `dist/` to your server path, e.g.:
-   ```bash
-   npm run build
-   # then e.g.:
-   TARGET=/var/www/phpcoin/apps/wallet3
-   sudo mkdir -p $TARGET
-   sudo cp -r dist/* $TARGET/
-   ```
-
-3. **Nginx** – Use **`dev/nginx-phpcoin-production.conf`**: set `root` to the parent of `apps/` (e.g. `/var/www/phpcoin`), run `/apps/wallet3/wallet_api.php` via PHP-FPM. Because the app uses **hash mode**, no `try_files` is required for client routes. Switch between dev config (proxy to Vite) and production config (serve static + wallet_api.php) as needed.
-
-4. **Main API** – Set **`VITE_MAIN_URL`**; the app calls **`{VITE_MAIN_URL}/api.php`** for getBalance, getTransactions, send, etc.
-
-5. **Dapps PHP entry** – Deploy **`public/index.php`** (or your host’s entry) so the app loads from **`VITE_APP_BASE`**. If you deploy without **`index.html`**, ensure the PHP entry loads the built **`assets/index*.js`** and **`assets/index*.css`** paths Vite emits.
+1. Set `VITE_APP_BASE` in env to match server path.
+2. `npm run build` (or `build_dapps`) — `wallet_api.php` copied to `dist/`.
+3. Deploy `dist/` to server; ensure `index.php` or `index.html` loads built assets.
+4. Nginx examples: `dev/nginx-phpcoin-production.conf` (hash mode — no SPA rewrite).
 
 ---
 
-## Notes for Future Tracking
+## Related docs
 
-- **Tailwind:** Only `@import "tailwindcss/theme"` and `@import "tailwindcss/utilities"` in `src/assets/css/main.css` to avoid preflight vs Bootstrap conflicts.
-- **Minia JS/CSS:** Theme links/scripts are loaded from **`VITE_COMMON_ASSETS`** when set (full `https://` URL). Optional fallbacks under `public/assets/` apply only if you ship those files on the same origin.
-- **Active account:** Set by login flows in `Login.vue`; header user menu in `AppLayout` shows jdenticon avatar, bold full address, balance (PHP) from `api.getBalance`, and dropdown to switch to other accounts (with jdenticon, address, name, balance per account); `authStore.activeAccount` drives avatar and balance refresh.
-- **Dashboard:** (1) Top row: Balance, Rewards, Network, PHP Price cards. (2) Account block: QR code, name, description, balance, address/public/private keys with copy, verification check (getPublicKey API), Trade/Direct buy buttons, Send/Receive. (3) Transactions block: latest 5 tx, View all. **Price:** `wallet_api.php?q=getPrice` → external **coinInfo** for spot + 24h change; local file stores **daily** USD closes for the 7-point sparkline. Network difficulty from `getBlock`. Rewards from type‑0 transactions. Address verification via `api.getPublicKey`.
-- **Brand:** Logo URL `https://node1.phpcoin.net/apps/common/img/logo.png`; primary color variables in `main.css` (`--phpcoin-primary`, `--phpcoin-primary-dark`).
-- **Dev vs prod:** Nginx can switch between `dev/nginx-phpcoin.conf` (proxy to Vite + optional `/assets/`) and `dev/nginx-phpcoin-production.conf` (serve built app + wallet_api.php from disk). Hash mode allows prod to work without SPA fallback rules.
+| Doc | Purpose |
+|-----|---------|
+| [FEATURES.md](FEATURES.md) | Feature checklist (may lag; this file is source of truth for shipped behavior) |
+| [LOGIN_ARCHITECTURE.md](LOGIN_ARCHITECTURE.md) | Login modes and autologin |
+| [DESKTOP.md](DESKTOP.md) | Electron, CI, phpcoin.net downloads |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Web build + deploy runbook |
+| [../CHANGELOG.md](../CHANGELOG.md) | Version history through 2.0.9 |
+| [../electron/README.md](../electron/README.md) | Electron env vars and scripts |
+| [../dev/tasks.txt](../dev/tasks.txt) | Phase 1/2 task list |
+
+---
+
+## Notes for maintainers
+
+- **Tailwind:** Only theme + utilities in `src/assets/css/main.css` (no preflight).
+- **Minia assets:** Loaded from **`VITE_COMMON_ASSETS`** when set.
+- **Brand:** Logo `https://node1.phpcoin.net/apps/common/img/logo.png`; ticker **PHP**.
+- **Desktop version:** Keep root `package.json` and `electron/package.json` in sync before tagging.
 
 Update this file when completing todos or changing architecture.

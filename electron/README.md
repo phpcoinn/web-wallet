@@ -1,6 +1,8 @@
 # PHP Coin Wallet — Electron v2
 
-**Separate npm project** from the Vue wallet: it loads either the **Vite dev server** (when `PHPCOIN_DEV_SERVER_URL` is set) or the **built** SPA under `../dist/`. The legacy v1 Electron wallet stays its own repo for compatibility.
+**Separate npm project** from the Vue wallet. The legacy v1 Electron wallet stays its own repo for compatibility.
+
+**Default (packaged):** loads **`https://wallet.phpcoin.net/`** — remote-first; web updates ship without reinstalling. Override with **`PHPCOIN_WALLET_URL`**, or **`PHPCOIN_USE_BUNDLED_WALLET=1`** for packaged `../dist/`. **Dev:** **`PHPCOIN_DEV_SERVER_URL`** (Vite HMR). Full release + download docs: **[../docs/DESKTOP.md](../docs/DESKTOP.md)**.
 
 ## Setup
 

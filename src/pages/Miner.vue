@@ -282,6 +282,156 @@
             </template>
           </div>
         </div>
+
+        <div v-if="STAKE_MINE_DELEGATION_MAINNET_ONLY" class="card mt-4">
+          <div class="card-header">
+            <h5 class="card-title mb-0 d-flex align-items-center gap-2 flex-wrap">
+              Delegated stake mining
+              <span class="badge bg-warning text-dark">V1</span>
+            </h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3">
+              Write an on-chain enable/disable record for the configured service address. The service reads the
+              latest `tx_data` for your address and can trigger the existing stake-mine URL whenever it runs.
+            </p>
+
+            <div v-if="!authStore.activeAccount?.address" class="alert alert-warning mb-0">No active account.</div>
+
+            <template v-else>
+              <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-8">
+                  <label class="form-label">Configured service address</label>
+                  <div class="form-control font-monospace text-break bg-body-tertiary" style="min-height: 38px">
+                    {{ delegationServiceAddress || 'Missing configured service address' }}
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="border rounded p-2 h-100">
+                    <div class="text-muted small">Service target</div>
+                    <div class="fw-semibold">{{ delegationServiceAddress ? 'Fixed' : 'Unavailable' }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  class="btn btn-success"
+                  :disabled="!delegationCanToggle || delegationSaving || delegationLoading"
+                  @click="onDelegationEnableClick"
+                >
+                  <span v-if="delegationSaving && delegationPendingAction === 'enable'" class="spinner-border spinner-border-sm me-2" role="status" />
+                  Enable delegation
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger"
+                  :disabled="!delegationCanToggle || delegationSaving || delegationLoading"
+                  @click="onDelegationDisableClick"
+                >
+                  <span v-if="delegationSaving && delegationPendingAction === 'disable'" class="spinner-border spinner-border-sm me-2" role="status" />
+                  Disable delegation
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  :disabled="delegationLoading || delegationSaving"
+                  @click="loadDelegationStatus"
+                >
+                  Refresh status
+                </button>
+              </div>
+
+              <div v-if="delegationServiceError" class="alert alert-danger mb-3 py-2">{{ delegationServiceError }}</div>
+              <div v-else-if="delegationLoadingError" class="alert alert-danger mb-3 py-2">{{ delegationLoadingError }}</div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-sm-6 col-md-4">
+                  <div class="border rounded p-2 h-100">
+                    <div class="text-muted">Current state</div>
+                    <div><span class="badge" :class="delegationStatusBadgeClass">{{ delegationStatusLabel }}</span></div>
+                  </div>
+                </div>
+                <div class="col-sm-6 col-md-4">
+                  <div class="border rounded p-2 h-100">
+                    <div class="text-muted">Latest record</div>
+                    <div class="fw-semibold">{{ delegationLatestRecord?.action || '—' }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="delegationLatestRecord" class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                  <tbody>
+                    <tr>
+                      <th scope="row" class="text-muted" style="width: 40%">Transaction</th>
+                      <td class="font-monospace text-break">{{ delegationLatestRecord.tx_id }}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Action</th>
+                      <td>{{ delegationLatestRecord.action }}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Height</th>
+                      <td>{{ delegationLatestRecord.height }}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Source</th>
+                      <td><code class="user-select-all text-break">{{ delegationLatestRecord.src }}</code></td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Destination</th>
+                      <td><code class="user-select-all text-break">{{ delegationLatestRecord.dst }}</code></td>
+                    </tr>
+                    <tr>
+                      <th scope="row" class="text-muted">Service payload</th>
+                      <td class="font-monospace text-break">
+                        <div>mine_pubkey: {{ delegationLatestRecord.json_data?.mine_pubkey || '—' }}</div>
+                        <div>mine_sig: {{ delegationLatestRecord.json_data?.mine_sig || '—' }}</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div v-if="delegationHistory.length" class="mt-3">
+                <div class="text-muted small mb-2">Recent records</div>
+                <div class="list-group">
+                  <div
+                    v-for="row in delegationHistory.slice(0, 5)"
+                    :key="row.tx_id"
+                    class="list-group-item py-2 d-flex justify-content-between align-items-center flex-wrap gap-2"
+                  >
+                    <div>
+                      <span class="badge me-2" :class="row.action === 'enable' ? 'bg-success' : 'bg-danger'">{{ row.action }}</span>
+                      <code class="font-monospace">{{ row.tx_id }}</code>
+                    </div>
+                    <div class="text-muted small">height {{ row.height }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="!delegationLatestRecord" class="text-muted">No delegation transaction found for this service yet.</div>
+
+              <div v-if="delegationLastResult?.id" class="alert alert-success mt-3 mb-0 py-2">
+                Submitted transaction <span class="font-monospace text-break">{{ delegationLastResult.id }}</span>
+              </div>
+              <div v-else-if="delegationLastError" class="alert alert-danger mt-3 mb-0 py-2">{{ delegationLastError }}</div>
+            </template>
+          </div>
+        </div>
+        <div v-else class="card mt-4">
+          <div class="card-header">
+            <h5 class="card-title mb-0 d-flex align-items-center gap-2 flex-wrap">
+              Delegated stake mining
+              <span class="badge bg-secondary text-white">Mainnet only</span>
+            </h5>
+          </div>
+          <div class="card-body text-muted">
+            Delegated stake mining is disabled on this network.
+          </div>
+        </div>
       </div>
 
       <div class="col-lg-4">
@@ -316,6 +466,11 @@
       action-label="Enter your password to sign stake mining authorization and request a payout."
       @confirm="onStakeMinePasswordConfirmed"
     />
+    <PasswordConfirmModal
+      v-model="showStakeMineDelegationPasswordModal"
+      action-label="Enter your password to sign the delegation transaction."
+      @confirm="onStakeMineDelegationPasswordConfirmed"
+    />
     <VerifierModal
       v-model="showVerifierModal"
       @verified="onVerifierInWalletSuccess"
@@ -335,10 +490,13 @@ import PasswordConfirmModal from '../components/PasswordConfirmModal.vue'
 import VerifierModal from '../components/VerifierModal.vue'
 import { useMinerStore } from '../stores/miner'
 import { useStakeMinerStore } from '../stores/stakeMiner'
+import { useStakeMineDelegationStore } from '../stores/stakeMineDelegation'
 import { stakeMineExplorerTxUrl, STAKE_MINE_COIN } from '../utils/stakeMine'
+import { STAKE_MINE_DELEGATION_MAINNET_ONLY } from '../utils/stakeMineDelegation'
 
 const minerStore = useMinerStore()
 const stakeMinerStore = useStakeMinerStore()
+const stakeMineDelegationStore = useStakeMineDelegationStore()
 const {
   miningUrlInput,
   cpu,
@@ -369,6 +527,7 @@ const accountsStore = useAccountsStore()
 const showVerifierPasswordModal = ref(false)
 const showVerifierModal = ref(false)
 const showStakeMinePasswordModal = ref(false)
+const showStakeMineDelegationPasswordModal = ref(false)
 
 const {
   previewLoading: stakePreviewLoading,
@@ -382,6 +541,27 @@ const {
 } = storeToRefs(stakeMinerStore)
 
 const { loadPreview: loadStakePreview, onPasswordConfirmed: stakeMinePasswordConfirm } = stakeMinerStore
+const {
+  serviceAddress: delegationServiceAddress,
+  serviceError: delegationServiceError,
+  loading: delegationLoading,
+  loadingError: delegationLoadingError,
+  latestRecord: delegationLatestRecord,
+  history: delegationHistory,
+  saving: delegationSaving,
+  pendingAction: delegationPendingAction,
+  lastResult: delegationLastResult,
+  lastError: delegationLastError,
+  statusLabel: delegationStatusLabel,
+  statusBadgeClass: delegationStatusBadgeClass,
+  canToggle: delegationCanToggle
+} = storeToRefs(stakeMineDelegationStore)
+const {
+  loadStatus: loadDelegationStatus,
+  requestEnable: requestDelegationEnable,
+  requestDisable: requestDelegationDisable,
+  onPasswordConfirmed: delegationPasswordConfirm
+} = stakeMineDelegationStore
 
 function stakeTxExplorerUrl(txid) {
   return stakeMineExplorerTxUrl(txid)
@@ -397,6 +577,25 @@ function onStakeMineClick() {
   if (needPassword === 'password') {
     showStakeMinePasswordModal.value = true
   }
+}
+
+function onDelegationEnableClick() {
+  const needPassword = requestDelegationEnable()
+  if (needPassword === 'password') {
+    showStakeMineDelegationPasswordModal.value = true
+  }
+}
+
+function onDelegationDisableClick() {
+  const needPassword = requestDelegationDisable()
+  if (needPassword === 'password') {
+    showStakeMineDelegationPasswordModal.value = true
+  }
+}
+
+function onStakeMineDelegationPasswordConfirmed(masterKey) {
+  showStakeMineDelegationPasswordModal.value = false
+  delegationPasswordConfirm(masterKey)
 }
 
 function openVerifierInNewTab(privateKey) {

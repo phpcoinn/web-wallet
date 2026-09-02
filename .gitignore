@@ -13,6 +13,8 @@ electron/release
 dist
 dist-ssr
 dev-dist
+# Deployment-specific advertising declaration
+public/ads.txt
 # Local-only dev notes and nginx samples (not published)
 dev/
 # Minia HTML vendor template (not used by Vite build; optional local reference)
@@ -34,4 +36,3 @@ theme/
 .env.dapps
 .env.dapps.testnet
 .env.testnet
-

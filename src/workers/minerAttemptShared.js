@@ -1,3 +1,5 @@
+import phpcoinCrypto from 'phpcoin-crypto'
+
 /**
  * Shared PHPCoin mining-step helpers (aligned with Block.php / mine.php).
  * Used by the orchestrator worker and optional miner-hash workers.
@@ -9,9 +11,7 @@ export function sanPhp(a) {
 }
 
 export async function sha256Hex(str) {
-  const enc = new TextEncoder().encode(str)
-  const buf = await crypto.subtle.digest('SHA-256', enc)
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+  return phpcoinCrypto.sha256(String(str))
 }
 
 export function phpStyleHit(hashPart8) {
@@ -47,7 +47,13 @@ export function bigintToUi(n) {
 export function buildSaltBytes(minerAddress, useDynamicSalt) {
   if (useDynamicSalt) {
     const rand = new Uint8Array(8)
-    crypto.getRandomValues(rand)
+    if (globalThis.crypto?.getRandomValues) {
+      globalThis.crypto.getRandomValues(rand)
+    } else {
+      for (let i = 0; i < rand.length; i++) {
+        rand[i] = Math.floor(Math.random() * 256)
+      }
+    }
     const hex = [...rand].map((b) => b.toString(16).padStart(2, '0')).join('')
     return new TextEncoder().encode(hex)
   }

@@ -144,8 +144,7 @@
           <div class="card-header align-items-center d-flex">
             <h5 class="card-title mb-0 flex-grow-1">Account</h5>
             <div class="flex-shrink-0 d-flex gap-2">
-              <a href="https://klingex.io/trade/PHP-USDT?ref=3436CA42" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm"><i class="bx bx-trending-up me-1"></i>Trade</a>
-              <a href="https://buy.phpcoin.net/?ref=DZVMQLV" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm"><i class="bx bx-cart me-1"></i>Direct buy</a>
+              <a href="https://buy.phpcoin.net/" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm"><i class="bx bx-cart me-1"></i>Trade</a>
             </div>
           </div>
           <div class="card-body">

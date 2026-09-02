@@ -5,10 +5,12 @@ Version numbers match the app (see the footer).
 
 ## [Unreleased]
 
-## [2.0.9] — 2026-05-20
+## [2.0.9] — 2026-06-10
 
 - **What’s new** on the dashboard shows again after each changelog update until you dismiss it (no longer hidden just because you logged in on the release day).
 - **New** badges on the **Miner** menu and **Stake mining** card (primary background, white text).
+- **Desktop release** — Electron shell aligned to **2.0.9**; GitHub Release published; phpcoin.net download links updated (hourly sync from GitHub).
+- **Documentation** — `docs/PROJECT_STATUS.md`, `DESKTOP.md`, `DEPLOYMENT.md`, `dev/tasks.txt` refreshed for phase 1 complete + Android phase 2.
 
 ## [2.0.8] — 2026-05-20
 

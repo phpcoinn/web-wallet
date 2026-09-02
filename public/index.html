@@ -10,7 +10,30 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="PHP Wallet" />
-    <title>PHP Coin Wallet</title>
+    <title>PHPCoin Wallet – Secure Web Wallet for PHP Coin</title>
+    <meta name="description" content="Create and manage your PHPCoin wallet securely. Send, receive, mine, stake, and manage PHP Coin directly from your browser." />
+    <link rel="canonical" href="https://wallet.phpcoin.net/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PHPCoin Wallet" />
+    <meta property="og:title" content="PHPCoin Wallet – Secure Web Wallet for PHP Coin" />
+    <meta property="og:description" content="Securely manage, send, receive, mine, and stake PHP Coin from your browser." />
+    <meta property="og:url" content="https://wallet.phpcoin.net/" />
+    <meta property="og:image" content="https://wallet.phpcoin.net/pwa-512x512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="PHPCoin Wallet – Secure Web Wallet for PHP Coin" />
+    <meta name="twitter:description" content="Securely manage, send, receive, mine, and stake PHP Coin from your browser." />
+    <meta name="twitter:image" content="https://wallet.phpcoin.net/pwa-512x512.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "PHPCoin Wallet",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web, Windows, Linux",
+        "url": "https://wallet.phpcoin.net/",
+        "description": "A secure web and desktop wallet for managing PHP Coin."
+      }
+    </script>
     <!-- Google Fonts - IBM Plex Sans (theme) -->
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script type="module" crossorigin src="/assets/index.js"></script>
@@ -26,6 +49,14 @@
     </script>
 </head>
 <body>
-<div id="app"></div>
+<div id="app">
+    <main style="max-width: 720px; margin: 4rem auto; padding: 1rem; text-align: center; font-family: sans-serif;">
+        <h1>PHPCoin Wallet</h1>
+        <p>A secure web wallet for creating and managing your PHP Coin accounts.</p>
+        <p>Send and receive PHP Coin, view transactions, mine, stake, and manage your wallet directly from your browser.</p>
+        <p>Loading your wallet…</p>
+        <noscript>Please enable JavaScript to open and use PHPCoin Wallet.</noscript>
+    </main>
+</div>
 </body>
 </html>

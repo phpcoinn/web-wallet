@@ -99,6 +99,25 @@ export const api = {
   },
 
   /**
+   * Get tx_data payload for a transaction id.
+   */
+  async getTxData(transaction) {
+    return callApi(MAIN_API_URL, 'getTxData', { transaction })
+  },
+
+  /**
+   * Search tx_data records using indexed fields.
+   */
+  async findTxData(params = {}) {
+    const query = {}
+    for (const [key, value] of Object.entries(params)) {
+      if (value == null || value === '') continue
+      query[key] = String(value)
+    }
+    return callApi(MAIN_API_URL, 'findTxData', query)
+  },
+
+  /**
    * Generate send transaction (main API)
    */
   async generateSendTransaction(transaction) {
@@ -318,4 +337,3 @@ export const api = {
     return callApi(MAIN_API_URL, 'generateMasternodeRemoveTx', params)
   }
 }
-

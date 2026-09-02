@@ -135,12 +135,12 @@
                                             </div>
                                         </div>
                                         <div class="row g-0">
-                                            <div class="col">
-                                                <a class="dropdown-icon-item" href="https://klingex.io/trade/PHP-USDT?ref=3436CA42" target="_blank" rel="noopener noreferrer" title="Trade on KlingEx">
-                                                    <i class="bx bx-trending-up font-size-22 text-success mb-1"></i>
-                                                    <span>KlingEx</span>
-                                                </a>
-                                            </div>
+                                          <div class="col">
+                                            <a class="dropdown-icon-item" href="https://discord.gg/2H2YvFexQq" target="_blank" rel="noopener noreferrer" title="PHP Coin node on GitHub">
+                                              <i class="bx bxl-discord font-size-22 text-dark mb-1"></i>
+                                              <span>Discord</span>
+                                            </a>
+                                          </div>
                                             <div class="col">
                                                 <a class="dropdown-icon-item" href="https://buy.phpcoin.net/?utm_source=explorer&utm_medium=community&utm_campaign=direct_buy" target="_blank" rel="noopener noreferrer" title="Buy PHP Coin">
                                                     <i class="bx bx-cart font-size-22 text-warning mb-1"></i>
@@ -226,7 +226,7 @@
                 <!-- ========== Left Sidebar Start ========== -->
                 <div class="vertical-menu sidebar-vertical-shell">
     
-                    <div data-simplebar class="sidebar-simplebar-scroll">
+                    <div class="sidebar-simplebar-scroll">
     
                         <!--- Sidemenu -->
                         <div id="sidebar-menu">
@@ -320,27 +320,29 @@
                             </ul>
                         </div>
                         <!-- Sidebar -->
-                    </div>
-                    <div
-                        v-if="minerRunning && !sidebarCompact"
-                        class="sidebar-miner-foot flex-shrink-0 border-top px-3 py-3"
-                    >
-                        <router-link
-                            to="/miner"
-                            class="text-decoration-none d-block rounded px-2 py-2 bg-success-subtle"
+                        <div
+                            v-if="minerRunning && !sidebarCompact"
+                            class="sidebar-miner-foot flex-shrink-0 border-top px-3 py-3"
                         >
-                            <div class="text-uppercase text-muted small mb-1">Mining</div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <span class="miner-nav-dot flex-shrink-0" aria-hidden="true" />
-                                <span class="text-success fw-semibold small">Active</span>
-                            </div>
-                            <div class="font-monospace small text-body text-break">
-                                {{ miningStat.speed || '0' }} H/s
-                                <template v-if="minerHeightLabel">
-                                    <span class="text-muted"> · {{ minerHeightLabel }}</span>
-                                </template>
-                            </div>
-                        </router-link>
+                            <router-link
+                                to="/miner"
+                                class="text-decoration-none d-block rounded px-2 py-2 bg-success-subtle"
+                            >
+                                <div class="text-uppercase text-muted small mb-1">Mining</div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="miner-nav-dot flex-shrink-0" aria-hidden="true" />
+                                    <span class="text-success fw-semibold small">Active</span>
+                                </div>
+                                <div class="font-monospace small text-body text-break">
+                                    {{ miningStat.speed || '0' }} H/s
+                                    <template v-if="minerHeightLabel">
+                                        <span class="text-muted"> · {{ minerHeightLabel }}</span>
+                                    </template>
+                                </div>
+                            </router-link>
+                        </div>
+
+                        <AdsenseAd v-if="!sidebarCompact" class="mt-auto mb-3" />
                     </div>
                 </div>
                 <!-- Left Sidebar End -->
@@ -431,6 +433,7 @@ import { CHAIN_ID } from '../utils/wallet'
 import { SWAP_ENABLED } from '../constants/swap'
 import { APP_VERSION } from '../constants/appMeta'
 import ChangelogModal from './ChangelogModal.vue'
+import AdsenseAd from './AdsenseAd.vue'
 
 import { MAIN_URL } from '../utils/mainUrl.js'
 
@@ -438,7 +441,7 @@ const EXPLORER_SEARCH_URL = `${MAIN_URL}/apps/explorer/`
 
 export default {
   name: 'AppLayout',
-  components: { Address, ChangelogModal },
+  components: { Address, ChangelogModal, AdsenseAd },
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
@@ -792,9 +795,15 @@ body:not([data-sidebar-size='sm'])
 #app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll {
   flex: 1 1 0;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  overscroll-behavior: contain;
+}
+
+#app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll > #sidebar-menu {
+  flex: 0 0 auto;
 }
 
 /* SimpleBar wraps content; let the chain fill the flex slot so scrolling stays inside */
@@ -813,6 +822,13 @@ body:not([data-sidebar-size='sm'])
 #app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll .simplebar-offset {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* Keep the ad at the bottom when content is short; scroll everything together on overflow. */
+#app #layout-wrapper .vertical-menu.sidebar-vertical-shell > .sidebar-simplebar-scroll .simplebar-content {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 #app .vertical-menu .sidebar-miner-foot {

@@ -2,7 +2,7 @@
 
 A Vue 3 SPA web wallet for managing PHP Coin accounts.
 
-**Current version: `1.2.1`** (see `package.json`; shown in the app footer as `APP_VERSION`). For a full shipped-feature list, see **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**.
+**Current version: `2.0.9`** (see `package.json`; shown in the app footer as `APP_VERSION`). For a full shipped-feature list, see **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**. Deploy: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** · Desktop: **[docs/DESKTOP.md](docs/DESKTOP.md)**.
 
 ## Features
 
@@ -16,7 +16,10 @@ A Vue 3 SPA web wallet for managing PHP Coin accounts.
 - Masternodes (create / remove), **Swap** on testnet (`VITE_CHAIN_ID=01`)
 - **PHPCoin Verifier** — verify in-wallet (AJAX + modal) or open the dapp with signed `loginrequest` from the Dashboard / Miner
 - PWA (offline precache / install)
-- **Desktop (Electron):** optional native shell in **`electron/`** — Linux (**AppImage**, **deb**) and Windows (**NSIS**, **portable**) via **electron-builder**; local dev with `npm run electron:dev` (see [electron/README.md](electron/README.md)). **CI:** [`.github/workflows/build-desktop.yml`](.github/workflows/build-desktop.yml) builds **Windows & Linux x64** on `v*` tags (or manual run) and can publish a **GitHub Release** with attached installers.
+- **Miner** — browser WASM PoW; native Argon2 in Electron; **stake mining** (preview + mine via `mine.php`)
+- **Tools** — sign arbitrary messages
+- **Connect** — dapp postMessage sign-in / sign-transaction bridge
+- **Desktop (Electron):** thin shell in **`electron/`** — loads **https://wallet.phpcoin.net/** by default (remote-first); Linux (**AppImage**, **deb**) and Windows (**NSIS**, **portable**). Local dev: `npm run electron:dev`. **CI:** [`.github/workflows/build-desktop.yml`](.github/workflows/build-desktop.yml) — `v*` tags → GitHub Release. **Downloads:** [phpcoin.net/desktop links](docs/DESKTOP.md#public-downloads-phpcoinnet). See [docs/DESKTOP.md](docs/DESKTOP.md) and [electron/README.md](electron/README.md).
 
 ## Telegram bot autologin
 
@@ -47,6 +50,9 @@ VITE_COMMON_ASSETS=https://main1.phpcoin.net/apps/common
 VITE_MAIN_URL=https://main1.phpcoin.net
 VITE_WALLET_API_URL=https://wallet.phpcoin.net/wallet_api.php
 VITE_CHAIN_ID=00
+# Optional web-only advertising (keep actual values out of Git)
+VITE_ADSENSE_CLIENT=ca-pub-...
+VITE_ADSENSE_SLOT=...
 ```
 
 - **`VITE_APP_BASE`** — Must end with `/`. Build output and asset URLs use this (e.g. `/` for site root or `/apps/wallet3/` for a subpath). Vite default in `vite.config.js` is `/apps/wallet3/` if unset.
@@ -55,6 +61,7 @@ VITE_CHAIN_ID=00
 - **`VITE_WALLET_API_URL`** — URL to **`wallet_api.php`** (used for price and health checks). Use a full `https://…` URL, or a same-origin path such as `/dapps.php?url=…/wallet_api.php` for dapps deploys.
 - **`VITE_CHAIN_ID`** — Network id for signing (default **`00`** mainnet). Use **`01`** for testnet-only features such as Swap. Testnet bundles (e.g. `npm run build_dapps_testnet`) set this via `.env.dapps.testnet` so the **Swap** menu appears in the sidebar.
 - **`VITE_VERIFIER_ADDRESS`** — Payout address for in-wallet address verification (must match the verifier dapp’s `config.php` on that network). **`wallet_api.php`** proxies `q=verify` and uses **`WALLET_VERIFIER_PAYOUT_ADDRESS`** (or env **`WALLET_VERIFIER_PAYOUT_ADDRESS`**) for the send-back authorize response — keep PHP and Vite values aligned when you deploy.
+- **`VITE_ADSENSE_CLIENT` / `VITE_ADSENSE_SLOT`** — Optional web-only AdSense configuration. Ads remain disabled unless both values are valid, and are never loaded in Electron. Store real values only in ignored deployment env files or CI secrets.
 
 3. Run development server:
 ```bash
@@ -102,4 +109,3 @@ src/
 - **UI:** Minia/Bootstrap shell loaded via **`VITE_COMMON_ASSETS`**; Tailwind CSS 4 for utilities/overrides (`src/assets/css/main.css`)
 - SweetAlert2 (toasts), Lucide Vue (icons where used), ApexCharts (dashboard charts), html5-qrcode, jdenticon, marked + DOMPurify (changelog)
 - IndexedDB via **idb**; **phpcoin-crypto** for keys/signing; PWA (vite-plugin-pwa)
-

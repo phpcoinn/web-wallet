@@ -145,6 +145,10 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,ico,png,svg,webmanifest,woff2,woff,ttf}'],
           // Bundle can exceed 2 MiB (e.g. after adding markdown + sanitizer for changelog).
           maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          // Activate updated workers immediately so users do not remain on an old wallet bundle
+          // until every existing tab for this origin has been closed.
+          skipWaiting: true,
+          clientsClaim: true,
           navigateFallback: null,
           // Required when precache is empty (e.g. dev); also caches theme fonts from index.html
           runtimeCaching: [
@@ -183,8 +187,8 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: true,
-      open: true
+      open: true,
+      allowedHosts: ['phpcoin']
     }
   }
 })
-
